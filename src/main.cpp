@@ -1,12 +1,9 @@
 #include <Arduino.h> // Core types and functions for arduino 
-#include <LiquidCrystal.h> // lcd driver
 #include "secrets.h" // WiFi Cred
 #include <WiFi.h> // Router Connection
 #include "time.h" // POSIX for handling time locally, SNTP for acquiring UTC time from the internet
-
-// PIN MAPPING
-const int rs = 15, en = 17, d7 = 12, d6 = 11, d5 = 10, d4 = 9; 
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+#include <Wire.h>
+#include <Adafruit_LEDBackpack.h>
 
 // SNTP sync
 void initTime(const char* tz) {
@@ -52,42 +49,40 @@ void setTimeFF(int yr, int month, int mday, int hr, int minute, int sec, int isD
 
 }
 
-void setup() {
-  lcd.begin(16,2);
-  delay(50);
+const uint8_t I2C_Address = 0x70; 
+Adafruit_7segment disp;
 
+void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFisetup();
   
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Syncing Time...");
   initTime("EST5EDT,M3.2.0/2,M11.1.0/2");
 
-  lcd.clear();
-  lcd.print("int...");
   delay(200);
 
-
+  Wire.begin(4, 5);
+  disp.begin(I2C_Address);
+  disp.setBrightness(15);
+  
 }
 
 void loop() {
-  lcd.setCursor(0,0);
+  disp.print(1234);
+  disp.writeDisplay();
   struct tm ti;
   if (getLocalTime(&ti)) {
     char tbuf[9];
     strftime(tbuf, sizeof(tbuf), "%H:%M:%S", &ti);
-    lcd.setCursor(0, 0);
-    lcd.print(tbuf);
+
+
 
     char zbuf[17];
     strftime(zbuf, sizeof(zbuf), "%Z %z", &ti);
-    lcd.setCursor(0, 1);
-    lcd.print(zbuf);
+
+
 
     int len = strlen(zbuf);
-    for (int i = len; i < 16; ++i) lcd.print(' ');
   }
   delay(1000);
 }
