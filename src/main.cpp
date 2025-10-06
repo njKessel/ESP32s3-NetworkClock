@@ -1,19 +1,27 @@
-#include <Arduino.h>
-#include <LiquidCrystal.h>
-#include "secrets.h"
-#include <WiFi.h>
-#include "time.h"
+#include <Arduino.h> // Core types and functions for arduino 
+#include <LiquidCrystal.h> // lcd driver
+#include "secrets.h" // WiFi Cred
+#include <WiFi.h> // Router Connection
+#include "time.h" // POSIX for handling time locally, SNTP for acquiring UTC time from the internet
 
-const int rs = 15, en = 17, d7 = 12, d6 = 11, d5 = 10, d4 = 9;
+// PIN MAPPING
+const int rs = 15, en = 17, d7 = 12, d6 = 11, d5 = 10, d4 = 9; 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
+// SNTP sync
 void initTime(const char* tz) {
-  configTzTime(tz, "pool.ntp.org");
-  tm ti; while (!getLocalTime(&ti)) { delay(200); }
+  tm ti{}; // Zero initialization 
+  configTzTime(tz, "pool.ntp.org"); // Sets timezone and starts SNTP
+
+  const int maxAttempts = 150; // 150 * 200ms is 30s max wait
+  int attempts = 0;
+  while (!getLocalTime(&ti) && (attempts < maxAttempts)) {
+    attempts++;
+    delay(200); } // Waits for valid time
 }
 
 String formatTime(const tm& ti) {
-  char buf[9];                       // "HH:MM:SS" + NUL
+  char buf[9];  // "HH:MM:SS" + empty
   strftime(buf, sizeof(buf), "%H:%M:%S", &ti);
   return String(buf);
 }
@@ -29,28 +37,35 @@ void WiFisetup(){
 }
 
 void setTimeFF(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
-  struct tm tm;
+  struct tm tmd{};
 
-  tm.tm_year = yr - 1900;
-  tm.tm_mon = month-1;
-  tm.tm_mday = mday;
-  tm.tm_hour = hr;
-  tm.tm_min = minute;
-  tm.tm_sec = sec;
-  tm.tm_isdst = isDst;
-  time_t t = mktime(&tm);
+  tmd.tm_year = yr - 1900;    // Years since 1900
+  tmd.tm_mon = month-1;
+  tmd.tm_mday = mday;
+  tmd.tm_hour = hr;
+  tmd.tm_min = minute;
+  tmd.tm_sec = sec;
+  tmd.tm_isdst = isDst;
+  time_t t = mktime(&tmd);
   struct timeval now = { .tv_sec = t};
   settimeofday(&now, NULL);
 
 }
 
 void setup() {
+  lcd.begin(16,2);
+  delay(50);
+
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFisetup();
+  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Syncing Time...");
   initTime("EST5EDT,M3.2.0/2,M11.1.0/2");
 
-  lcd.begin(16,2);
+  lcd.clear();
   lcd.print("int...");
   delay(200);
 
@@ -59,11 +74,6 @@ void setup() {
 
 void loop() {
   lcd.setCursor(0,0);
-  tm timeinfo;
-  if (getLocalTime(&timeinfo)) {
-    lcd.setCursor(0, 0);
-    lcd.print(formatTime(timeinfo));
-  }
   struct tm ti;
   if (getLocalTime(&ti)) {
     char tbuf[9];
