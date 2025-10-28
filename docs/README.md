@@ -11,10 +11,10 @@ Eventually, I plan to add:
 - **Temperature display** (local sensor + web data)  
 - **Moon phase indicator**  
 - **Google Calendar integration**  
-- **Optional VFD display upgrade** for a more refined look  
+- **Optional VFD display upgrade** for a more refined look <- Likely necessary for legible alphanumeric display
 
 ---
 
 ## 🧾 License  
 
-MIT License – see [LICENSE](LICENSE) for details.
+MIT License – see LICENSE for details.
