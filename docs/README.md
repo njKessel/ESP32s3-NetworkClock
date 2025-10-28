@@ -1,5 +1,20 @@
 # ESP32s3-NetworkClock
 ESP32-S3 smart clock with LED display, weather, moon phase, temperature, Google Calendar. Work in progress.
 
-My goal with this project is to begin with a simple clock with a simple display. This started as a LCD but eventually became a 7-segment display. Eventually I would like to add Google Calendar, weather, temperature, and other features and try to convey this information on a simple display (may move to VFD for this)
+## Overview  
 
+This project started as a simple network-connected clock and gradually evolved from an LCD display to a 7-segment LED design.  
+My goal is to create a compact, informative display that synchronizes time and data from various online sources — all presented cleanly on minimalist hardware.
+
+Eventually, I plan to add:  
+- **Weather updates** (via an online API)  
+- **Temperature display** (local sensor + web data)  
+- **Moon phase indicator**  
+- **Google Calendar integration**  
+- **Optional VFD display upgrade** for a more refined look  
+
+---
+
+## 🧾 License  
+
+MIT License – see [LICENSE](LICENSE) for details.
