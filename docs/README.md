@@ -16,6 +16,7 @@ Eventually, I plan to add:
 ## Hurdles
 
 FIrst major hurdle has been understanding the display im using and how sending data over I2C works. The Adafruit Backpack that I was using before is only intended for 4-digit displays. Instead of simply using this, I want to build my own version of it for 8 digit displays.
+
 ---
 
 ## License  
