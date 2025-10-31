@@ -4,6 +4,9 @@
 #include "time.h"    // POSIX time + SNTP
 #include <Wire.h>
 
+const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
+int iterator = 0x00;
+
 // SNTP sync
 void initTime(const char* tz) {
   tm ti{}; // Zero initialization 
@@ -45,7 +48,26 @@ void setTimeFF(int yr, int month, int mday, int hr, int minute, int sec, int isD
   settimeofday(&now, NULL);
 }
 
-const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
+void displayInitialize(){
+  Wire.begin(4, 5); // keep I2C active for manual writes later
+  Wire.beginTransmission(I2C_Address);
+    Wire.write(0x21); // Oscillator on
+    Wire.endTransmission();
+  Wire.beginTransmission(I2C_Address);
+    Wire.write(0x81); // Display on
+    Wire.endTransmission();
+}
+
+void displayClean(){
+  for (int positionWiper = 0x00; positionWiper <= 0x0E; positionWiper+=2) {
+    Wire.beginTransmission(I2C_Address);
+      Wire.write(positionWiper);
+      Wire.write(0x00);
+      Wire.endTransmission();
+  }
+}
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -55,25 +77,35 @@ void setup() {
 
   delay(200);
 
-  Wire.begin(4, 5); // keep I2C active for manual writes later
-  Wire.beginTransmission(I2C_Address);
-    Wire.write(0x21);
-    Wire.endTransmission();
+  displayInitialize();
+  
+  // Clear Display
+  displayClean();
+
+  
 }
 
 void loop() {
-  
-
-  struct tm ti;
-  if (getLocalTime(&ti)) {
-    char tbuf[9];
-    strftime(tbuf, sizeof(tbuf), "%H:%M:%S", &ti);
-
-    char zbuf[17];
-    strftime(zbuf, sizeof(zbuf), "%Z %z", &ti);
-
-    int len = strlen(zbuf);
-    (void)len; // silence unused warning for now
+  Wire.beginTransmission(I2C_Address);
+    Wire.write(0x00);
+    Wire.write(0x5B);
+    Wire.endTransmission();
+  iterator++;
+  if (iterator == 0x0F) {
+    
+    iterator = 0x00;
   }
-  delay(1000);
+  delay(500);
+  // struct tm ti;
+  // if (getLocalTime(&ti)) {
+  //   char tbuf[9];
+  //   strftime(tbuf, sizeof(tbuf), "%H:%M:%S", &ti);
+
+  //   char zbuf[17];
+  //   strftime(zbuf, sizeof(zbuf), "%Z %z", &ti);
+
+  //   int len = strlen(zbuf);
+  //   (void)len; // silence unused warning for now
+  // }
+
 }
