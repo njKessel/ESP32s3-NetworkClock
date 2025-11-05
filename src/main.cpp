@@ -95,30 +95,29 @@ const int displayIndex[] = { // Simple list of the hex values for transmission t
   0x0E  // CHAR 7
 };
 
-void displayTime(char tbuf[]) {
-  bool decimalCarry = 1;
-  int displayIndexTracer = strlen(tbuf);
-  for(int displayIterator = strlen(tbuf); displayIterator >= 0; displayIterator--;) {
-    Wire.beginTransmission(I2C_Address);
+void displayTime(char tbuf[]) { // Displays the time as given by tbuf to the display
+  bool decimalCarry = 0;
+  int displayIndexTracer = strlen(tbuf) - 1;
+  for(int displayIterator = 7; displayIterator >= 0; displayIterator--) {
     if (tbuf[displayIterator] == ':') {
             decimalCarry = 1;
-            displayIndexTracer--;
-            Wire.endTransmission();
     } else {
+      Wire.beginTransmission(I2C_Address);
       if (decimalCarry == 0) {
         Wire.write(displayIndex[displayIndexTracer]);
-        Wire.write(displayPattern[tbuf[displayIterator]]);
+        Wire.write(displayPattern[tbuf[displayIterator] - '0']);
         Wire.endTransmission();
-        
       } else {
         Wire.write(displayIndex[displayIndexTracer]);
-        Wire.write(addDecimal(displayPattern(tbuf[displayIterator])));
+        Wire.write(addDecimal(displayPattern[tbuf[displayIterator] - '0']));
         Wire.endTransmission();
-        displayIndexTracer--;
-        decimalCarry
       }
-      displayIndexTracer--;
-      
+      decimalCarry = 0;
+      if (displayIndexTracer != 0) {
+        displayIndexTracer--;
+      } else {
+        Serial.println("Index Tracer error in displayTime code 0x0002");
+      }
     }
   }
 }
