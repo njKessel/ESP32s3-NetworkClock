@@ -46,7 +46,6 @@ void setTimeFF(int yr, int month, int mday, int hr, int minute, int sec, int isD
   struct timeval now = { .tv_sec = t };
   settimeofday(&now, NULL);
 }
-
 void displayInitialize(){
   Wire.begin(4, 5); // keep I2C active for manual writes later
   Wire.beginTransmission(I2C_Address);
@@ -150,7 +149,7 @@ void loop() {
 
     int len = strlen(zbuf);
     (void)len;
+    displayTime(tbuf);
   }
-  displayTime(tbuf[]);
   delay(500);
 }
