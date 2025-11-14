@@ -122,6 +122,71 @@ const int displayIndex[] = { // Simple list of the hex values for transmission t
   0x0E  // CHAR 7
 };
 
+const String TZ_menu[] = {                                    // TIME ZONE POSIX STRINGS, [POSIX, TIME ZONE, OFFSET, CITY]
+  ["AOE12", "AOE", "-12", "Baker Island"],                                              // 0 AOE
+  ["NUT11", "NUT", "-11", "American Samoa"],                                            // 1 NUT
+  ["HST11HDT,M3.2.0/2:00:00,M11.1.0/2:00:00", "HST", "-10", "Hawaii"],                  // 2 HST
+  ["MART9:30,M3.2.0/2:00:00,M11.1.0/2:00:00", "MART", "-9:30", "French Polynesia"],     // 3 MART
+
+  ["AKST9AKDT,M3.2.0/2:00:00,M11.1.0/2:00:00", "AKST", "-9", "Alaska"],                 // 4 AKST
+  ["PST8PDT,M3.2.0/2:00:00,M11.1.0/2:00:00", "PDT", "-8", "Los Angeles"],               // 5 PDT
+  ["MST7MDT,M3.2.0/2:00:00,M11.1.0/2:00:00", "MST", "-7", "Denver"],                    // 6 MST/DST
+  ["MST7", "MST", "-7", "Phoenix"],                                                     // 7 MST
+  ["CST6CDT,M3.2.0/2:00:00,M11.1.0/2:00:00", "CST", "-6", "Chicago"],                   // 8 CST
+  ["EST5EDT,M3.2.0/2,M11.1.0/2", "EST", "-5", "New York"],                              // 9 EST
+
+  ["AST4ADT,M3.2.0/2:00:00,M11.1.0/2:00:00", "AST", "-4", "Halifax"],                   // 10 AST
+  ["BRT3", "BRT", "-3", "São Paulo"],                                                   // 11 BRT
+  ["FKST3FKDT,M9.1.0/2:00:00,M4.3.0/2:00:00", "FKST", "-3", "Falkland Islands"],        // 12 FKST
+  ["GRNL2", "GRL", "-2", "South Georgia"],                                              // 13 GRL
+
+  ["AZOT1AZOST,M3.5.0/0:00:00,M10.5.0/1:00:00", "AZOT", "-1", "Azores"],                // 14 AZOT
+  ["GMT0", "GMT", "0", "London"],                                                       // 15 GMT
+  ["GMT0BST,M3.5.0/1:00:00,M10.5.0/2:00:00", "BST", "+1", "United Kingdom"],            // 16 GMT/DST
+  ["CET-1CEST,M3.5.0/2:00:00,M10.5.0/3:00:00", "CET", "+1", "Berlin"],                  // 17 CET
+  ["WAT-1", "WAT", "+1", "Nigeria"],                                                    // 18 WAT
+  ["EET-2EEST,M3.5.0/3:00:00,M10.5.0/4:00:00", "EET", "+2", "Athens"],   
+
+  ["CAT-2", "CAT", "+2", "South Africa"],                                               // 19 CAT
+  ["MSK-3", "MSK", "+3", "Moscow"],                                                     // 20 MSK
+  ["AST-3", "AST", "+3", "Saudi Arabia"],                                               // 21 AST
+
+  ["GST-4", "GST", "+4", "Dubai"],                                                      // 22 GST
+  ["AZT-4AZST,M3.5.0/4:00:00,M10.5.0/5:00:00", "AZT", "+4", "Azerbaijan"],              // 23 AZT
+  ["AFT-4:30", "AFT", "+4:30", "Afghanistan"],                                          // 24 AFT
+  ["PKT-5", "PKT", "+5", "Pakistan"],                                                   // 25 PKT
+  ["IST-5:30", "IST", "+5:30", "India"],                                                // 26 IST
+  ["NPT-5:45", "NPT", "+5:45", "Nepal"],                                                // 27 NPT
+
+  ["BST-6", "BST", "+6", "Bangladesh"],                                                 // 28 BST
+  ["MMT-6:30", "MMT", "+6:30", "Myanmar"],                                              // 29 MMT
+  ["ICT-7", "ICT", "+7", "Thailand"],                                                   // 30 ICT
+  ["WIB-7", "WIB", "+7", "Indonesia West"],                                             // 31 WIB
+
+  ["CST-8", "CST", "+8", "China"],                                                      // 32 CST
+  ["AWST-8", "AWST", "+8", "Perth"],                                                    // 33 AWST
+  ["HKT-8", "HKT", "+8", "Hong Kong"],                                                  // 34 HKT
+  ["WITA-8", "WITA", "+8", "Indonesia Central"],                                        // 35 WITA
+
+  ["JST-9", "JST", "+9", "Japan"],                                                      // 36 JST
+  ["KST-9", "KST", "+9", "South Korea"],                                                // 37 KST
+  ["ACST-9:30ACDT,M10.1.0/2:00:00,M4.1.0/3:00:00", "ACST", "+9:30", "Adelaide"],        // 38 ACST/ACDT
+  ["CST-9:30", "CST", "+9:30", "Northern Territory"],                                   // 39 ACST
+
+  ["AEST-10AEDT,M10.1.0/2:00:00,M4.1.0/3:00:00", "AEST", "+10", "Sydney"],              // 40 AEDT
+  ["CHUT-10", "CHUT", "+10", "Chuuk"],                                                  // 41 CHUT
+  ["WIT-9", "WIT", "+9", "Indonesia East"],                                             // 42 WIT
+
+  ["SBT-11", "SBT", "+11", "Solomon Islands"],                                          // 43 SBT
+  ["NCT-11", "NCT", "+11", "New Caledonia"],                                            // 44 NCT
+  ["NZST-12NZDT,M9.5.0/2:00:00,M4.1.0/3:00:00", "NZST", "+12", "New Zealand"],          // 45 NZST
+  ["FJT-12FJDT,M11.1.0/2:00:00,M1.2.0/3:00:00", "FJT", "+12", "Fiji"],                  // 46 FJT
+
+  ["TOT-13", "TOT", "+13", "Tonga"],                                                    // 47 TOT
+  ["PHOT-13", "PHOT", "+13", "Phoenix Islands"],                                        // 48 PHOT
+  ["LINT-14", "LINT", "+14", "Line Islands"]                                            // 49 LINT
+};
+
 void displayTime(char tbuf[]) { // Displays the time as given by tbuf to the display
   bool decimalCarry = 0;
   int displayIndexTracer = strlen(tbuf) - 1;
@@ -170,7 +235,7 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFisetup();
-  initTime("EST5EDT,M3.2.0/2,M11.1.0/2");
+  initTime(TZ_menu[9, 0]);
 
   delay(200);
 
