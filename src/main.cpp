@@ -5,6 +5,8 @@
 #include <Wire.h>
 
 const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
+const int TZDISPLAY = 21; // GPIO PIN 21
+int TZDISPLAY_status = 0;
 
 // SNTP sync
 void initTime(const char* tz) {
@@ -80,7 +82,33 @@ const int displayPattern[] = {
   0x7d, // 6
   0x07, // 7
   0x7f, // 8 
-  0x67  // 9
+  0x67, // 9
+  0x77, // A
+  0x7C, // B
+  0x39, // C
+  0x5E, // D
+  0x79, // E
+  0x71, // F
+  0x39, // G
+  0x74, // H
+  0x05, // I
+  0x0D, // J
+  0x78, // K
+  0x38, // L
+  0xD4, // M
+  0x54, // N
+  0x3F, // O
+  0x73, // P
+  0x67, // Q
+  0x7B, // R
+  0x6D, // S
+  0x78, // T
+  0x1C, // U
+  0x3E, // V
+  0x9C, // W
+  0x76, // X
+  0x66, // Y
+  0x5B  // Z
 };
 
 const int displayIndex[] = { // Simple list of the hex values for transmission that correspond to digits
@@ -121,6 +149,22 @@ void displayTime(char tbuf[]) { // Displays the time as given by tbuf to the dis
   }
 }
 
+void displayTZ() {
+  Wire.beginTransmission(I2C_Address);
+    Wire.write(displayIndex[2]);
+    Wire.write(0x00);
+    Wire.write(displayIndex[3]);
+    Wire.write(0x00);
+    Wire.write(displayIndex[4]);
+    Wire.write(0x00);
+    Wire.write(displayIndex[5]);
+    Wire.write(displayPattern[14]);
+    Wire.write(displayIndex[6]);
+    Wire.write(displayPattern[28]);
+    Wire.write(displayIndex[7]);
+    Wire.write(displayPattern[29]);
+    Wire.endTransmission();
+}
 
 void setup() {
   Serial.begin(115200);
@@ -135,13 +179,15 @@ void setup() {
   // Clear Display
   displayClean();
 
-  
+  pinMode(21, INPUT);
 }
 
 void loop() {
+  TZDISPLAY_status = digitalRead(21);
+
   struct tm ti;
+  char tbuf[9];
   if (getLocalTime(&ti)) {
-    char tbuf[9];
     strftime(tbuf, sizeof(tbuf), "%H:%M:%S", &ti); // FORMATS TIME AS HH:MM:SS
 
     char zbuf[17];
@@ -149,7 +195,12 @@ void loop() {
 
     int len = strlen(zbuf);
     (void)len;
+  }
+  if (TZDISPLAY_status == HIGH) {
+    displayTZ();
+  } else {
     displayTime(tbuf);
   }
+ 
   delay(500);
 }
