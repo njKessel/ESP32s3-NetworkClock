@@ -3,8 +3,7 @@ ESP32-S3 smart clock with LED display, weather, moon phase, temperature, Google 
 
 ## Overview  
 
-This project started as a simple network-connected clock and gradually evolved from an LCD display to a 7-segment LED design.  
-My goal is to create a compact, informative display that synchronizes time and data from various online sources — all presented cleanly on minimalist hardware.
+This project started as a simple network-connected clock and gradually evolved from LCD display to 7-segment LED to alphanumeric LED design. My goal is to create a compact, informative display that synchronizes time and data from various online sources all presented cleanly on minimalist hardware.
 
 Eventually, I plan to add:  
 - **Weather updates** (via an online API)  
