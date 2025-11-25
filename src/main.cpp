@@ -75,61 +75,6 @@ void displayClean(){
   }
 }
 
-int addDecimal(int numberVal) {
-  int increasedNumVal = numberVal | 0x80;
-  return increasedNumVal;
-}
-
-const int displayPattern[] = {
-  0x3F, // 0
-  0x06, // 1
-  0x5B, // 2
-  0x4F, // 3
-  0x66, // 4
-  0x6D, // 5
-  0x7d, // 6
-  0x07, // 7
-  0x7f, // 8 
-  0x67, // 9
-  0x77, // A
-  0x7C, // B
-  0x39, // C
-  0x5E, // D
-  0x79, // E
-  0x71, // F
-  0x39, // G
-  0x74, // H
-  0x05, // I
-  0x0D, // J
-  0x78, // K
-  0x38, // L
-  0xD4, // M
-  0x54, // N
-  0x3F, // O
-  0x73, // P
-  0x67, // Q
-  0x7B, // R
-  0x6D, // S
-  0x78, // T
-  0x1C, // U
-  0x3E, // V
-  0x9C, // W
-  0x76, // X
-  0x66, // Y
-  0x5B  // Z
-};
-
-const int displayIndex[] = { // Simple list of the hex values for transmission that correspond to digits
-  0x00, // CHAR 0
-  0x02, // CHAR 1
-  0x04, // CHAR 2
-  0x06, // CHAR 3
-  0x08, // CHAR 4
-  0x0A, // CHAR 5
-  0x0C, // CHAR 6
-  0x0E  // CHAR 7
-};
-
 const String TZ_menu[] = {                                    // TIME ZONE POSIX STRINGS, [POSIX, TIME ZONE, OFFSET, CITY]
   ["AOE12", "AOE", "-12", "Baker Island"],                                              // 0 AOE
   ["NUT11", "NUT", "-11", "American Samoa"],                                            // 1 NUT
@@ -194,6 +139,64 @@ const String TZ_menu[] = {                                    // TIME ZONE POSIX
   ["PHOT-13", "PHOT", "+13", "Phoenix Islands"],                                        // 48 PHOT
   ["LINT-14", "LINT", "+14", "Line Islands"]                                            // 49 LINT
 };
+
+enum anodeBit : uint32_t {
+  ANODE0 = 1u << 25,  // 74HC595 U4 pin ANODE1 on 12C-LTP-587HR_rev1
+  ANODE1 = 1u << 26,
+  ANODE2 = 1u << 27,
+  ANODE3 = 1u << 28,
+  ANODE4 = 1u << 29,
+  ANODE5 = 1u << 30,
+  ANODE6 = 1u << 31,
+  ANODE7 = 1u << 32,
+  ANODE8 = 1u << 33,
+  ANODE9 = 1u << 34,
+  ANODE10 = 1u << 35,
+  ANODE11 = 1u << 26, // 74HC595 U5 pin ANODE12 on 12C-LTP-587HR_rev1
+};
+
+void displayScan(uint32_t displayCodes[]) {
+  for (int digit = 0; digit < 12, digit++;) {
+    switch(uint32_t digit) {
+      case 0:
+        displayCodes[0] | ANODE0;
+        break;
+      case 1:
+        displayCodes[1] | ANODE1;
+        break;
+      case 2:
+        displayCodes[2] | ANODE2;
+        break;
+      case 3:
+        displayCodes[3] | ANODE3;
+        break;
+      case 4:
+        displayCodes[4] | ANODE4;
+        break;
+      case 5:
+        displayCodes[5] | ANODE5;
+        break;
+      case 6:
+        displayCodes[6] | ANODE6;
+        break;
+      case 7:
+        displayCodes[7] | ANODE7;
+        break;
+      case 8:
+        displayCodes[8] | ANODE8;
+        break;
+      case 9:
+        displayCodes[9] | ANODE9;
+        break;
+      case 10:
+        displayCodes[10] | ANODE10;
+        break;
+      case 11:
+        displayCodes[11] | ANODE11;
+        break;
+    }
+  }
+}
 
 void displayTime(char tbuf[]) { // Displays the time as given by tbuf to the display
   bool decimalCarry = 0;
