@@ -1,8 +1,16 @@
-#include <Arduino.h> // Core types and functions for arduino 
-#include "secrets.h" // WiFi Cred, change to secrets.example.h
-#include <WiFi.h>    // Router Connection
-#include "time.h"    // POSIX time + SNTP
-#include <Wire.h>
+/*
+ESP32 NETWORK CLOCK             NATHANIEL KESSEL
+WORK IN PROGRESS                        ESP32-S3
+https://github.com/njKessel/ESP32s3-NetworkClock
+*/
+
+#include <Arduino.h>                // Core types and functions for arduino 
+#include <WiFi.h>                   // Router Connection
+#include <Wire.h>                   // I2C
+#include <time.h>                   // POSIX time + SNTP
+
+#include "secrets.h"                // WiFi Cred, change to secrets.example.h
+#include "display_font.h"           // Alphanumeric font
 
 const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
 const int TZDISPLAY = 21; // GPIO PIN 21
