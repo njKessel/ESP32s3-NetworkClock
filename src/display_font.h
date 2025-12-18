@@ -1,5 +1,11 @@
 #pragma once
+#include <Arduino.h>
 #include <stdint.h>
+
+// Manually define the type if the headers are failing to pull it into global scope
+typedef unsigned int size_t;
+
+void initFontTable();
 
 enum segmentBit : uint32_t {
     SEG_A = 1u << 0,
@@ -21,4 +27,9 @@ enum segmentBit : uint32_t {
     SEG_DP = 1u << 16,
 };
 
-uint32_t getSegmentPattern(char c);
+constexpr uint32_t SEG_ALL =
+    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H |
+    SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U | SEG_DP;
+
+uint32_t getSegmentPattern(char c, bool DP);
+void displayBuilder(const char* str, std::size_t len, uint64_t* displayWords);

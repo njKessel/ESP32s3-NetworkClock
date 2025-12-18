@@ -13,6 +13,10 @@ https://github.com/njKessel/ESP32s3-NetworkClock
 #include "secrets.h"                // WiFi Cred, change to secrets.example.h
 #include "display_font.h"           // Alphanumeric font
 
+uint64_t displayWords[12];
+const char* displayStr = "   12.34.AB   ";
+unsigned long lastUpdate = 0;
+
 const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
 const int TZDISPLAY = 21; // GPIO PIN 21
 int TZDISPLAY_status = 0;
@@ -29,6 +33,27 @@ static void latchPulse() {
   digitalWrite(PIN_LATCH, HIGH);
   digitalWrite(PIN_LATCH, LOW);
 }
+
+static void latchLow() {
+  digitalWrite(PIN_LATCH, LOW);
+}
+
+static void latchHigh() {
+  digitalWrite(PIN_LATCH, HIGH);
+}
+
+void spiWrite64(uint64_t data) {
+  uint32_t high = (uint32_t)(data >> 32);
+  uint32_t low = (uint32_t)(data & 0xFFFFFFFF);
+
+  latchLow();
+  SPI.beginTransaction(srSettings);
+  SPI.transfer32(high);
+  SPI.transfer32(low);
+  SPI.endTransaction();
+  latchPulse();
+}
+
 // SNTP sync
 void initTime(const char* tz) {
   tm ti{}; // Zero initialization 
@@ -68,25 +93,6 @@ void setTimeFF(int yr, int month, int mday, int hr, int minute, int sec, int isD
   time_t t = mktime(&tmd);
   struct timeval now = { .tv_sec = t };
   settimeofday(&now, NULL);
-}
-
-void displayInitialize(){
-  Wire.begin(4, 5); // keep I2C active for manual writes later
-  Wire.beginTransmission(I2C_Address);
-    Wire.write(0x21); // Oscillator on
-    Wire.endTransmission();
-  Wire.beginTransmission(I2C_Address);
-    Wire.write(0x81); // Display on
-    Wire.endTransmission();
-}
-
-void displayClean(){
-  for (int positionWiper = 0x00; positionWiper <= 0x0E; positionWiper+=2) {
-    Wire.beginTransmission(I2C_Address);
-      Wire.write(positionWiper);
-      Wire.write(0x00);
-      Wire.endTransmission();
-  }
 }
 
 struct TZEntry {
@@ -167,144 +173,44 @@ const TZEntry TZ_menu[] = {
 
 const size_t TZ_MENU_COUNT = sizeof(TZ_menu) / sizeof(TZ_menu[0]);
 
-
-enum anodeBit : uint32_t {
-  ANODE0 = 1u << 25,  // 74HC595 U4 pin ANODE1 on 12C-LTP-587HR_rev1
-  ANODE1 = 1u << 26,
-  ANODE2 = 1u << 27,
-  ANODE3 = 1u << 28,
-  ANODE4 = 1u << 29,
-  ANODE5 = 1u << 30,
-  ANODE6 = 1u << 31,
-  ANODE7 = 1u << 32,
-  ANODE8 = 1u << 33,
-  ANODE9 = 1u << 34,
-  ANODE10 = 1u << 35,
-  ANODE11 = 1u << 26, // 74HC595 U5 pin ANODE12 on 12C-LTP-587HR_rev1
-};
-
-void displayScan(uint32_t displayCodes[]) {
-  for (int digit = 0; digit < 12, digit++;) {
-    switch(uint32_t digit) {
-      case 0:
-        displayCodes[0] | ANODE0;
-        break;
-      case 1:
-        displayCodes[1] | ANODE1;
-        break;
-      case 2:
-        displayCodes[2] | ANODE2;
-        break;
-      case 3:
-        displayCodes[3] | ANODE3;
-        break;
-      case 4:
-        displayCodes[4] | ANODE4;
-        break;
-      case 5:
-        displayCodes[5] | ANODE5;
-        break;
-      case 6:
-        displayCodes[6] | ANODE6;
-        break;
-      case 7:
-        displayCodes[7] | ANODE7;
-        break;
-      case 8:
-        displayCodes[8] | ANODE8;
-        break;
-      case 9:
-        displayCodes[9] | ANODE9;
-        break;
-      case 10:
-        displayCodes[10] | ANODE10;
-        break;
-      case 11:
-        displayCodes[11] | ANODE11;
-        break;
+void displayScan(uint64_t displayWords[12]) {
+    for (int i = 0; i < 12; i++) {
+        spiWrite64(displayWords[i]);
+        latchPulse();
     }
-  }
 }
 
-void displayTime(char tbuf[]) { // Displays the time as given by tbuf to the display
-  bool decimalCarry = 0;
-  int displayIndexTracer = strlen(tbuf) - 1;
-  for(int displayIterator = 7; displayIterator >= 0; displayIterator--) {
-    if (tbuf[displayIterator] == ':') {
-            decimalCarry = 1;
-    } else {
-      Wire.beginTransmission(I2C_Address);
-      if (decimalCarry == 0) {
-        Wire.write(displayIndex[displayIndexTracer]);
-        Wire.write(displayPattern[tbuf[displayIterator] - '0']);
-        Wire.endTransmission();
-      } else {
-        Wire.write(displayIndex[displayIndexTracer]);
-        Wire.write(addDecimal(displayPattern[tbuf[displayIterator] - '0']));
-        Wire.endTransmission();
-      }
-      decimalCarry = 0;
-      if (displayIndexTracer != 0) {
-        displayIndexTracer--;
-      } else {
-        Serial.println("Index Tracer error in displayTime code 0x0002");
-      }
+void displayWrite(uint64_t displayWords[12], unsigned long &lastUpdate, int refreshDelay = 2) {
+    static int currentDigit = 0;
+    if (millis() - lastUpdate >= refreshDelay) {
+        spiWrite64(displayWords[currentDigit]);
+        currentDigit = (currentDigit + 1) % 12;
+        lastUpdate = millis();
     }
-  }
 }
 
-void displayTZ() {
-  Wire.beginTransmission(I2C_Address);
-    Wire.write(displayIndex[2]);
-    Wire.write(0x00);
-    Wire.write(displayIndex[3]);
-    Wire.write(0x00);
-    Wire.write(displayIndex[4]);
-    Wire.write(0x00);
-    Wire.write(displayIndex[5]);
-    Wire.write(displayPattern[14]);
-    Wire.write(displayIndex[6]);
-    Wire.write(displayPattern[28]);
-    Wire.write(displayIndex[7]);
-    Wire.write(displayPattern[29]);
-    Wire.endTransmission();
-}
+
 
 void setup() {
+  
+
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFisetup();
-  initTime(TZ_menu[9, 0]);
+
+  SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);
+  pinMode(PIN_LATCH, OUTPUT);
+  pinMode(PIN_OE, OUTPUT);
+  digitalWrite(PIN_OE, LOW);
 
   delay(200);
+  pinMode(TZDISPLAY, INPUT);
 
-  displayInitialize();
-  
-  // Clear Display
-  displayClean();
-
-  pinMode(21, INPUT);
+  initFontTable();
 }
 
 void loop() {
-  TZDISPLAY_status = digitalRead(21);
+  displayBuilder(displayStr, strlen(displayStr), displayWords);
 
-  struct tm ti;
-  char tbuf[9];
-  if (getLocalTime(&ti)) {
-    strftime(tbuf, sizeof(tbuf), "%H:%M:%S", &ti); // FORMATS TIME AS HH:MM:SS
-
-    char zbuf[17];
-    strftime(zbuf, sizeof(zbuf), "%Z %z", &ti);
-
-    int len = strlen(zbuf);
-    (void)len;
-  }
-  if (TZDISPLAY_status == HIGH) {
-    displayTZ();
-  } else {
-    displayTime(tbuf);
-  }
- 
-  delay(500);
+  displayWrite(displayWords, lastUpdate);
 }
