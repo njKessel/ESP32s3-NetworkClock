@@ -22,16 +22,18 @@ const int TZDISPLAY = 21; // GPIO PIN 21
 int TZDISPLAY_status = 0;
 
 // DISPLAY PINS
-constexpr int PIN_COPI  = 11;  // SERIAL INPUT
+constexpr int PIN_COPI  = 13;  // SERIAL INPUT
 constexpr int PIN_LATCH = 40;  // RCLK
 constexpr int PIN_OE    = 4;   // BRIGHTNESS (PWM)
 constexpr int PIN_SCK   = 12;  // SCK
 
-SPISettings srSettings(10000000, MSBFIRST, SPI_MODE0);
+SPISettings srSettings(1000000, MSBFIRST, SPI_MODE0);
 
 static void latchPulse() {
   digitalWrite(PIN_LATCH, HIGH);
+  delayMicroseconds(1);
   digitalWrite(PIN_LATCH, LOW);
+  delayMicroseconds(1);
 }
 
 static void latchLow() {
@@ -51,6 +53,8 @@ void spiWrite64(uint64_t data) {
   SPI.transfer32(high);
   SPI.transfer32(low);
   SPI.endTransaction();
+
+  asm volatile("nop;nop;nop;nop");
   latchPulse();
 }
 
@@ -210,7 +214,13 @@ void setup() {
 }
 
 void loop() {
-  displayBuilder(displayStr, strlen(displayStr), displayWords);
+  delay(1000);
+  
+  // This sends 64 bits of logic HIGH (1).
+  // UNUSED    0000001
+  spiWrite64(0x000000FFFFFFFFEF);
+  delay(1000);
+  // isplayBuilder(displayStr, strlen(displayStr), displayWords);
 
-  displayWrite(displayWords, lastUpdate);
+  // displayWrite(displayWords, lastUpdate);
 }

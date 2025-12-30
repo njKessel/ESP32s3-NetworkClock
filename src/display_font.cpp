@@ -75,15 +75,16 @@ uint32_t getSegmentPattern(char c, bool DP) {
     }
 }
 
-void displayBuilder(const char* str, std::size_t len, uint64_t* displayWords) {
-    for (std::size_t i = 0, displayIndex = 0; i < len && displayIndex < 12; i++) {
+void displayBuilder(const char* str, size_t len, uint64_t* displayWords) {
+    for (size_t i = 0, displayIndex = 0; i < len && displayIndex < 12; i++) {
         bool decimalPoint = (i + 1 < len && str[i + 1] == '.');
         if (decimalPoint) i++;
 
-        uint64_t segmentPattern = static_cast<uint64_t>(SEG_ALL & ~getSegmentPattern(str[i], decimalPoint));
-        uint64_t anodeBit = 1ull << (25 + displayIndex);
+        uint64_t segments = getSegmentPattern(str[i], decimalPoint);
+        
+        uint64_t anode = (1ULL << (48 + displayIndex)); 
 
-        displayWords[displayIndex] = segmentPattern | anodeBit;
+        displayWords[displayIndex] = (anode << 16) | segments; 
         displayIndex++;
     }
 }
