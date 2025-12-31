@@ -32,4 +32,4 @@ constexpr uint32_t SEG_ALL =
     SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U | SEG_DP;
 
 uint32_t getSegmentPattern(char c, bool DP);
-void displayBuilder(const char* str, std::size_t len, uint64_t* displayWords);
+void displayBuilder(const char* str, uint64_t* displayWords);

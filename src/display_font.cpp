@@ -75,16 +75,29 @@ uint32_t getSegmentPattern(char c, bool DP) {
     }
 }
 
-void displayBuilder(const char* str, size_t len, uint64_t* displayWords) {
-    for (size_t i = 0, displayIndex = 0; i < len && displayIndex < 12; i++) {
-        bool decimalPoint = (i + 1 < len && str[i + 1] == '.');
-        if (decimalPoint) i++;
+// Create an array for easy access to your enum bits
+const uint64_t anodeMap[12] = {
+  ANODE0, ANODE1, ANODE2, ANODE3, ANODE4, ANODE5, 
+  ANODE6, ANODE7, ANODE8, ANODE9, ANODE10, ANODE11
+};
 
-        uint64_t segments = getSegmentPattern(str[i], decimalPoint);
+void displayBuilder(const char* str, uint64_t* displayWords) {
+    size_t len = strlen(str);
+    size_t displayIndex = 0;
+
+    for(int j=0; j<12; j++) displayWords[j] = 0;
+
+    for (size_t i = 0; i < len && displayIndex < 12; i++) {
+
+        bool hasDP = (i + 1 < len && (str[i + 1] == '.' || str[i + 1] == ':'));
         
-        uint64_t anode = (1ULL << (48 + displayIndex)); 
+        uint32_t segments = getSegmentPattern(str[i], hasDP);
+        
+        uint64_t segmentData = (uint64_t)(~segments & 0xFFFF); 
 
-        displayWords[displayIndex] = (anode << 16) | segments; 
+        displayWords[displayIndex] = anodeMap[displayIndex] | segmentData;
+
+        if (hasDP) i++; 
         displayIndex++;
     }
 }

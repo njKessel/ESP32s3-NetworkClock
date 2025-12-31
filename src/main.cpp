@@ -72,9 +72,31 @@ void initTime(const char* tz) {
 }
 
 String formatTime(const tm& ti) {
-  char buf[9];  // "HH:MM:SS" + NUL
-  strftime(buf, sizeof(buf), "%H:%M:%S", &ti);
+  char buf[14];  // "HH:MM:SS" + NUL
+  strftime(buf, sizeof(buf), "<<<%H:%M:%S>>>", &ti);
   return String(buf);
+}
+
+uint64_t toDisplayWords[12];
+
+void timeSpace(char formattedTime[], char type) {
+  int dI = 0;
+  int len = strlen(formattedTime);
+
+  for (int i = 0; i < 12; i++) toDisplayWords[i] = 0;
+
+  if (type == 't') {
+    for (int i = 0; i < len && dI < 12; i++) {
+      
+      if (i + 1 < len && formattedTime[i + 1] == ':') {
+        toDisplayWords[dI] = getSegmentPattern(formattedTime[i], true);
+        i++;
+      } else {
+        toDisplayWords[dI] = getSegmentPattern(formattedTime[i], false);
+      }
+      dI++;
+    }
+  }
 }
 
 void WiFisetup(){
@@ -196,8 +218,6 @@ void displayWrite(uint64_t displayWords[12], unsigned long &lastUpdate, int refr
 
 
 void setup() {
-  
-
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   WiFisetup();
@@ -211,16 +231,19 @@ void setup() {
   pinMode(TZDISPLAY, INPUT);
 
   initFontTable();
+  initTime("EST5EDT");
 }
 
 void loop() {
-  delay(1000);
-  
-  // This sends 64 bits of logic HIGH (1).
-  // UNUSED    0000001
-  spiWrite64(0x000000FFFFFFFFEF);
-  delay(1000);
-  // isplayBuilder(displayStr, strlen(displayStr), displayWords);
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    char timeStr[16];
 
-  // displayWrite(displayWords, lastUpdate);
+    strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo); 
+    
+    displayBuilder(timeStr, toDisplayWords);
+  }
+
+  displayWrite(toDisplayWords, lastUpdate, 1); 
 }
+  
