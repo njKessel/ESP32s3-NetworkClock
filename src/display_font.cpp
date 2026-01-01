@@ -49,18 +49,18 @@ void initFontTable() {
 }
 
 enum anodeBit : uint64_t {
-  ANODE0 = 1ull << 25,  // 74HC595 U4 pin ANODE1 on 12C-LTP-587HR_rev1
-  ANODE1 = 1ull << 26,
-  ANODE2 = 1ull << 27,
-  ANODE3 = 1ull << 28,
-  ANODE4 = 1ull << 29,
-  ANODE5 = 1ull << 30,
-  ANODE6 = 1ull << 31,
-  ANODE7 = 1ull << 32,
-  ANODE8 = 1ull << 33,
-  ANODE9 = 1ull << 34,
-  ANODE10 = 1ull << 35,
-  ANODE11 = 1ull << 36, // 74HC595 U5 pin ANODE12 on 12C-LTP-587HR_rev1
+  ANODE0 = 1ull << 24,  // 74HC595 U4 pin ANODE1 on 12C-LTP-587HR_rev1
+  ANODE1 = 1ull << 25,
+  ANODE2 = 1ull << 26,
+  ANODE3 = 1ull << 27,
+  ANODE4 = 1ull << 28,
+  ANODE5 = 1ull << 29,
+  ANODE6 = 1ull << 30,
+  ANODE7 = 1ull << 31,
+  ANODE8 = 1ull << 32,
+  ANODE9 = 1ull << 33,
+  ANODE10 = 1ull << 34,
+  ANODE11 = 1ull << 35, // 74HC595 U5 pin ANODE12 on 12C-LTP-587HR_rev1
 };
 
 uint32_t getSegmentPattern(char c, bool DP) {
@@ -93,7 +93,7 @@ void displayBuilder(const char* str, uint64_t* displayWords) {
         
         uint32_t segments = getSegmentPattern(str[i], hasDP);
         
-        uint64_t segmentData = (uint64_t)(~segments & 0xFFFF); 
+        uint64_t segmentData = (uint64_t)(~segments & 0x1FFFF); 
 
         displayWords[displayIndex] = anodeMap[displayIndex] | segmentData;
 

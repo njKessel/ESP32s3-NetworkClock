@@ -14,7 +14,6 @@ https://github.com/njKessel/ESP32s3-NetworkClock
 #include "display_font.h"           // Alphanumeric font
 
 uint64_t displayWords[12];
-const char* displayStr = "   12.34.AB   ";
 unsigned long lastUpdate = 0;
 
 const uint8_t I2C_Address = 0x70; // Scan agrees 10.26
@@ -27,7 +26,10 @@ constexpr int PIN_LATCH = 40;  // RCLK
 constexpr int PIN_OE    = 4;   // BRIGHTNESS (PWM)
 constexpr int PIN_SCK   = 12;  // SCK
 
-SPISettings srSettings(1000000, MSBFIRST, SPI_MODE0);
+// BUTTON PINS
+constexpr int PIN_ENCODER_PUSH = 46;
+
+SPISettings srSettings(10000000, MSBFIRST, SPI_MODE0);
 
 static void latchPulse() {
   digitalWrite(PIN_LATCH, HIGH);
@@ -72,32 +74,12 @@ void initTime(const char* tz) {
 }
 
 String formatTime(const tm& ti) {
-  char buf[14];  // "HH:MM:SS" + NUL
-  strftime(buf, sizeof(buf), "<<<%H:%M:%S>>>", &ti);
+  char buf[16];  // "HH:MM:SS" + NUL
+  strftime(buf, sizeof(buf), "   %H:%M:%S   ", &ti);
   return String(buf);
 }
 
 uint64_t toDisplayWords[12];
-
-void timeSpace(char formattedTime[], char type) {
-  int dI = 0;
-  int len = strlen(formattedTime);
-
-  for (int i = 0; i < 12; i++) toDisplayWords[i] = 0;
-
-  if (type == 't') {
-    for (int i = 0; i < len && dI < 12; i++) {
-      
-      if (i + 1 < len && formattedTime[i + 1] == ':') {
-        toDisplayWords[dI] = getSegmentPattern(formattedTime[i], true);
-        i++;
-      } else {
-        toDisplayWords[dI] = getSegmentPattern(formattedTime[i], false);
-      }
-      dI++;
-    }
-  }
-}
 
 void WiFisetup(){
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -206,7 +188,7 @@ void displayScan(uint64_t displayWords[12]) {
     }
 }
 
-void displayWrite(uint64_t displayWords[12], unsigned long &lastUpdate, int refreshDelay = 2) {
+void displayWrite(uint64_t displayWords[12], unsigned long &lastUpdate, int refreshDelay = 1) {
     static int currentDigit = 0;
     if (millis() - lastUpdate >= refreshDelay) {
         spiWrite64(displayWords[currentDigit]);
@@ -237,13 +219,8 @@ void setup() {
 void loop() {
   struct tm timeinfo;
   if (getLocalTime(&timeinfo)) {
-    char timeStr[16];
-
-    strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo); 
-    
-    displayBuilder(timeStr, toDisplayWords);
+    displayBuilder((char*)formatTime(timeinfo).c_str(),toDisplayWords);
   }
-
   displayWrite(toDisplayWords, lastUpdate, 1); 
 }
   
