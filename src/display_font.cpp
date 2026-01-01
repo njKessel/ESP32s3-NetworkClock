@@ -1,3 +1,5 @@
+// display_font.cpp
+
 #include "display_font.h"
 #include <cstddef>  
 
@@ -81,23 +83,37 @@ const uint64_t anodeMap[12] = {
   ANODE6, ANODE7, ANODE8, ANODE9, ANODE10, ANODE11
 };
 
-void displayBuilder(const char* str, uint64_t* displayWords) {
-    size_t len = strlen(str);
-    size_t displayIndex = 0;
+void displayBuilder(const char* str, uint64_t* displayWords, bool navDelay) {
+    size_t stringIdx = 0;
+    size_t strLen = strlen(str);
 
-    for(int j=0; j<12; j++) displayWords[j] = 0;
+    for (int dIdx = 0; dIdx < 12; dIdx++) {
+        uint32_t segments = 0;
 
-    for (size_t i = 0; i < len && displayIndex < 12; i++) {
+        if (navDelay) { // WITH NAVIGATION ARROWS
+            if (dIdx == 0) {
+                segments = getSegmentPattern('<', false);
+                stringIdx++;
+            } 
+            else if (dIdx == 11) {
+                segments = getSegmentPattern('>', false);
+            } 
+            else if (stringIdx < strLen) {
+                bool hasDP = (stringIdx + 1 < strLen && (str[stringIdx + 1] == '.' || str[stringIdx + 1] == ':'));
+                segments = getSegmentPattern(str[stringIdx], hasDP);
+                if (hasDP) stringIdx++;
+                stringIdx++;
+            }
+        } else { // WITHOUT NAVIGATION ARROWS
+            if (stringIdx < strLen) {
+                bool hasDP = (stringIdx + 1 < strLen && (str[stringIdx + 1] == '.' || str[stringIdx + 1] == ':'));
+                segments = getSegmentPattern(str[stringIdx], hasDP);
+                if (hasDP) stringIdx++;
+                stringIdx++;
+            }
+        }
 
-        bool hasDP = (i + 1 < len && (str[i + 1] == '.' || str[i + 1] == ':'));
-        
-        uint32_t segments = getSegmentPattern(str[i], hasDP);
-        
         uint64_t segmentData = (uint64_t)(~segments & 0x1FFFF); 
-
-        displayWords[displayIndex] = anodeMap[displayIndex] | segmentData;
-
-        if (hasDP) i++; 
-        displayIndex++;
+        displayWords[dIdx] = anodeMap[dIdx] | segmentData;
     }
 }

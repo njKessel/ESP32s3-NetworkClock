@@ -1,3 +1,5 @@
+// display_font.h
+
 #pragma once
 #include <Arduino.h>
 #include <stdint.h>
@@ -33,4 +35,4 @@ constexpr uint32_t SEG_ALL =
 
 uint32_t getSegmentPattern(char c, bool DP);
 
-void displayBuilder(const char* str, uint64_t* displayWords);
+void displayBuilder(const char* str, uint64_t* displayWords, bool navDelay);
