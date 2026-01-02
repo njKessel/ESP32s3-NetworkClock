@@ -44,10 +44,10 @@ void initFontTable() {
     fontTable['T'] = SEG_A | SEG_B |                         SEG_M |         SEG_S;
     fontTable['U'] =                 SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H;
     fontTable['V'] =                                 SEG_G | SEG_H |         SEG_M |                 SEG_T;
-    fontTable['W'] =                 SEG_C | SEG_D |                                         SEG_R |         SEG_T;
+    fontTable['W'] =                 SEG_C | SEG_D |                 SEG_G | SEG_H |         SEG_R |         SEG_T;
     fontTable['X'] =                                         SEG_K |         SEG_N |         SEG_R |         SEG_T;
     fontTable['Y'] =                                         SEG_K |         SEG_N |                 SEG_S;
-    fontTable['Z'] = SEG_A | SEG_B |                                 SEG_G | SEG_H |         SEG_N |                 SEG_T;
+    fontTable['Z'] = SEG_A | SEG_B |                 SEG_E | SEG_F |                 SEG_N |                 SEG_T;
 }
 
 enum anodeBit : uint64_t {
