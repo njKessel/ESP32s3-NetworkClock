@@ -12,11 +12,14 @@ WORK IN PROGRESS                ESP32-S3
 #include "secrets.h"          // WIFI CRED          
 #include "display_font.h"     // CHAR DISPLAY HANDLER
 
+#include <string>
+
 // --- STATE MACHINE ---
 enum SystemState {
   CLOCK_CLEAN,     // CLOCK WITHOUT NAVIGATON
   NAV_MODE,        // MENU WITH NAVIGATION ARROWS, IND 0 IS CLOCK + NAV, IND 1 IS TIME ZONE
-  TZ_SELECT        // TIME ZONE MENU
+  TZ_SELECT ,      // TIME ZONE MENU
+  STOPWATCH
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -203,6 +206,20 @@ const TZEntry TZ_menu[] = { // POSIX TABLE FOR POSIX STRINGS AND MENUS
 
 const size_t TZ_MENU_COUNT = sizeof(TZ_menu) / sizeof(TZ_menu[0]);              // TZ_menu SIZE CALCULATION
 
+String stopwatchFormat(unsigned long long stopwatchTime) {
+  unsigned long totalSeconds = stopwatchTime / 1000;
+  
+  int SWhours   = totalSeconds / 3600;
+  int SWminutes = (totalSeconds / 60) % 60;
+  int SWseconds = totalSeconds % 60;
+  int SWmillis  = stopwatchTime % 1000;
+
+  char timeBuffer[20]; 
+  snprintf(timeBuffer, sizeof(timeBuffer), "%02d:%02d:%02d:%03d", SWhours, SWminutes, SWseconds, SWmillis);
+
+  return String(timeBuffer) + "  ";
+}
+
 // --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
@@ -224,10 +241,15 @@ void setup() {
 // --- LOOP ---
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
+
+  bool hasMoved = encoderMoved;
+
+  if (hasMoved) encoderMoved = false;
+
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
 
   // 1. INPUTS
-  if (encoderMoved) {                                                           // IF ENCODER HAS CHANGED STATE
+  if (hasMoved) {                                                           // IF ENCODER HAS CHANGED STATE
     menuTimeout = now;                                                          // RESET TIMEROUT
     
     long movement = encoderRawCount / 4;                                        // DETECTS IF THE ENCODER HAS MOVED 
@@ -241,7 +263,6 @@ void loop() {
            menuIndex = 0;                                                       // SET MENU 0
         }
     }
-    encoderMoved = false;                                                       // IF NOTHING CHANGED DONT SIGNAL IT
   }
 
   // 2. LOGIC (50ms gate)
@@ -251,7 +272,7 @@ void loop() {
 
     // Timeout
     unsigned long timeoutDuration = (currentState == NAV_MODE && menuIndex == 1) ? 10000 : 5000;      // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s
-    if (currentState != CLOCK_CLEAN && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
+    if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       currentState = CLOCK_CLEAN;
     }
 
@@ -266,12 +287,20 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 1;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 1) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 3;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 3) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBufferTime(true);                                                                    // GET toDisplayWords FOR TIME WITH NAV ARROWS
-        } else {
+        } else if (menuIndex == 1) {
+          displayBuilder(" STOPWATCH  ", toDisplayWords, true);
+          if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
+            currentState = STOPWATCH;                                                                 // GO TO TIME ZONE SELECT MENU
+            timeLastPressed = now;                                                                    // TIMESTAMP BUTTON PRESS
+          }
+        } else if (menuIndex == 2) {
+          displayBuilder(" TIMER      ", toDisplayWords, true);
+        } else if (menuIndex == 3) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
           if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
             currentState = TZ_SELECT;                                                                 // GO TO TIME ZONE SELECT MENU
@@ -298,6 +327,44 @@ void loop() {
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
         }
         break;
+        
+      case STOPWATCH: { 
+        static bool swRunning = false;
+        static unsigned long long swStartTime = 0;
+        static unsigned long long swAccumulatedTime = 0;
+
+
+        unsigned long long currentDuration = swAccumulatedTime;
+        if (swRunning) {
+          currentDuration += (millis() - swStartTime);
+          menuTimeout = now; 
+        }
+
+        displayBuilder((char*)stopwatchFormat(currentDuration).c_str(), toDisplayWords, true);
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+          timeLastPressed = now; 
+
+          if (swRunning) {
+            swAccumulatedTime += (millis() - swStartTime);
+            swRunning = false;
+          } else {
+            swStartTime = millis();
+            swRunning = true;
+          }
+        }
+
+        if (hasMoved) {
+          currentState = NAV_MODE;
+
+          swRunning = false;
+          swAccumulatedTime = 0; 
+          
+          encoderMoved = false; 
+        }
+        
+        break;
+      }
     }
   }
   renderDisplay(toDisplayWords);                                                                      // RENDER CURRENT SCREEN STATE
