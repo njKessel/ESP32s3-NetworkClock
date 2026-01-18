@@ -206,6 +206,15 @@ const TZEntry TZ_menu[] = { // POSIX TABLE FOR POSIX STRINGS AND MENUS
 
 const size_t TZ_MENU_COUNT = sizeof(TZ_menu) / sizeof(TZ_menu[0]);              // TZ_menu SIZE CALCULATION
 
+struct alarmData {int alarm; uint8_t alarmHours; uint8_t alarmMinutes; uint8_t repeatDays;};
+
+alarmData alarmTable[] = {
+// ALARM #    HOUR    MINUTE    DAYS
+  {1,         6,      30,       0b00111110},
+  {2,         22,     0,        0b00111110},
+  {3,         0,      0,        0b00000000}
+};
+
 String stopwatchFormat(unsigned long long stopwatchTime) {
   unsigned long totalSeconds = stopwatchTime / 1000;
   
