@@ -18,8 +18,11 @@ WORK IN PROGRESS                ESP32-S3
 enum SystemState {
   CLOCK_CLEAN,     // CLOCK WITHOUT NAVIGATON
   NAV_MODE,        // MENU WITH NAVIGATION ARROWS, IND 0 IS CLOCK + NAV, IND 1 IS TIME ZONE
-  TZ_SELECT ,      // TIME ZONE MENU
-  STOPWATCH
+  TZ_SELECT,      // TIME ZONE MENU
+  STOPWATCH,
+  ALARM,
+  A_TIMESET,
+  A_REPEAT
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -44,6 +47,7 @@ volatile long encoderRawCount = 0;      // INIT FOR TRACKING PULSES FROM ENCODER
 long lastEncoderRead = 0;               // INIT TIMER SINCE LAST ENCODER READ
 
 volatile int menuIndex = 0;             // INIT MENU INDEX
+volatile int alarmMenuIndex = 1;
 volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
 bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
 int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
@@ -229,6 +233,18 @@ String stopwatchFormat(unsigned long long stopwatchTime) {
   return String(timeBuffer) + "  ";
 }
 
+// String alarmFormat(menuIndex) {
+
+// }
+
+
+// String timesetHandler(menuIndex) {
+//   if (menuIndex == 1) {
+//       char alarmBuffer[20];
+//       snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes);
+//   }
+// }
+
 // --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
@@ -296,8 +312,8 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 3;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 3) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBufferTime(true);                                                                    // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -309,6 +325,7 @@ void loop() {
           }
         } else if (menuIndex == 2) {
           displayBuilder(" TIMER      ", toDisplayWords, true);
+
         } else if (menuIndex == 3) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
           if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
@@ -320,6 +337,12 @@ void loop() {
             
             timeLastPressed = now;                                                                    // TIMESTAMP BUTTON PRESS
             menuTimeout = now;                                                                        // TIMESTAMP TIMEOUT
+          }
+
+        } else if (menuIndex == 4) {
+          displayBuilder("  ALARM     ", toDisplayWords, true);
+          if (buttonPressed && (now - timeLastPressed > 250)) {
+            currentState = ALARM;
           }
         }
         break;
@@ -374,7 +397,21 @@ void loop() {
         
         break;
       }
+      case ALARM: {
+        menuIndex = 1;
+        switch (menuIndex) {
+          case A_TIMESET: {
+            if (buttonPressed && (now - timeLastPressed > 250)) {
+              timeLastPressed = now;
+            }
+          }
+        }
+      }
     }
   }
   renderDisplay(toDisplayWords);                                                                      // RENDER CURRENT SCREEN STATE
 }
+
+
+
+// 2026-19-1 | 10:26 - 
