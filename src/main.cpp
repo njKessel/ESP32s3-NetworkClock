@@ -31,6 +31,7 @@ unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
 // --- GLOBALS ---
 uint64_t toDisplayWords[12];            // INIT ARRAY FOR THE PATTERNS SENT TO THE SHIFT REGISTERS
 unsigned long lastUpdate = 0;           // INIT TIME SINCE THE LAST SCREEN MUX
+bool hour24;
 
 // --- PIN DEFINITIONS ---
 constexpr int PIN_COPI  = 13;           // SPI SERIAL
@@ -233,17 +234,22 @@ String stopwatchFormat(unsigned long long stopwatchTime) {
   return String(timeBuffer) + "  ";
 }
 
-// String alarmFormat(menuIndex) {
+String timesetHandler(int menuIndex, int alarmMenuIndex) {
+  int displayAlarmHours;
+  char alarmBuffer[20];
+  char amPM[3];
+  if (menuIndex == 1) {
+    if (!hour24) {
+      if ((alarmTable[alarmMenuIndex].alarmHours - 12) < 0) {strcpy(amPM, "AM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;} else {strcpy(amPM, "PM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours - 12;}
+      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+    } else if (hour24) {
+      strcpy(amPM, "  ");
+      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+    }
+    return String(alarmBuffer);
+  }
+}
 
-// }
-
-
-// String timesetHandler(menuIndex) {
-//   if (menuIndex == 1) {
-//       char alarmBuffer[20];
-//       snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes);
-//   }
-// }
 
 // --- SETUP ---
 void setup() {
@@ -414,4 +420,5 @@ void loop() {
 
 
 
-// 2026-19-1 | 10:26 - 11:34
+// 2026-19-01 | 10:26 - 11:23
+// 2026-20-01 | 1:22 - 
