@@ -32,6 +32,12 @@ unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
 uint64_t toDisplayWords[12];            // INIT ARRAY FOR THE PATTERNS SENT TO THE SHIFT REGISTERS
 unsigned long lastUpdate = 0;           // INIT TIME SINCE THE LAST SCREEN MUX
 bool hour24;
+static int menuClick = 0;
+
+unsigned long timeSinceLastFlash = 0;
+bool flashState = false;
+
+bool alarmMode = false;
 
 // --- PIN DEFINITIONS ---
 constexpr int PIN_COPI  = 13;           // SPI SERIAL
@@ -124,9 +130,10 @@ String formatTime(const tm& ti, bool hour24) {
 
 // --- FUNCTIONS ---
 void displayBufferTime(bool showArrows) {
+  if (lastEncState) {hour24 = true;} else {hour24 = false;};
   struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
   if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)formatTime(timeinfo, lastEncState).c_str(), toDisplayWords, showArrows); // BUILD toDisplayWords FORMATTED
+    displayBuilder((char*)formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows); // BUILD toDisplayWords FORMATTED
   }
 }
 
@@ -220,6 +227,64 @@ alarmData alarmTable[] = {
   {3,         0,      0,        0b00000000}
 };
 
+String selectedChar(bool selected, char currentSelection) {
+  if (!selected) {
+    return String(currentSelection);
+  }
+
+  if (millis() - timeSinceLastFlash > 500) {
+    flashState = !flashState;
+    timeSinceLastFlash = millis();
+  }
+
+  if (flashState) {
+    return "#";
+  } else {
+    return String(currentSelection);
+  }
+}
+
+String repeatDisplay(int alarmMenuIndex, int position) {
+  char days[8] = {"SMTWTFS"};
+  char repeatStr[3];
+  bool repeat = alarmTable[alarmMenuIndex].repeatDays & (1 << position);
+  if (repeat) {
+    snprintf(repeatStr, sizeof(repeatStr), "%c:", days[position]);
+  } else {
+    snprintf(repeatStr, sizeof(repeatStr), "%c", days[position]);
+  }
+  return repeatStr;
+}
+
+String alarmHandler(int menuIndex, int alarmMenuIndex, int menuClick) {
+  int displayAlarmHours;
+  char alarmBuffer[20];
+  char amPM[3];
+  if (menuIndex == 1) {
+    if (!hour24) {
+      if ((alarmTable[alarmMenuIndex].alarmHours - 12) < 0) {strcpy(amPM, "AM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;} else {strcpy(amPM, "PM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours - 12;}
+
+      if (menuClick == 0) {
+        snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+
+      } else if (menuClick == 1) {
+        alarmMode = true;
+        snprintf(alarmBuffer, sizeof(alarmBuffer), " %s  %02d:%02d %s", selectedChar(true, alarmTable[alarmMenuIndex].alarm + '0').c_str(), displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+      }
+
+    } else if (hour24) {
+      strcpy(amPM, "  ");
+      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+    }
+    return String(alarmBuffer);
+  } else if (menuIndex == 2) {
+    snprintf(alarmBuffer, sizeof(alarmBuffer), "  %s%s%s%s%s%s%s   ", repeatDisplay(alarmMenuIndex, 0), repeatDisplay(alarmMenuIndex, 1), repeatDisplay(alarmMenuIndex, 2), repeatDisplay(alarmMenuIndex, 3), repeatDisplay(alarmMenuIndex, 4), repeatDisplay(alarmMenuIndex, 5), repeatDisplay(alarmMenuIndex, 6));
+  } else {
+    menuIndex = 1;
+  }
+  return String(alarmBuffer);
+}
+
 String stopwatchFormat(unsigned long long stopwatchTime) {
   unsigned long totalSeconds = stopwatchTime / 1000;
   
@@ -233,23 +298,6 @@ String stopwatchFormat(unsigned long long stopwatchTime) {
 
   return String(timeBuffer) + "  ";
 }
-
-String timesetHandler(int menuIndex, int alarmMenuIndex) {
-  int displayAlarmHours;
-  char alarmBuffer[20];
-  char amPM[3];
-  if (menuIndex == 1) {
-    if (!hour24) {
-      if ((alarmTable[alarmMenuIndex].alarmHours - 12) < 0) {strcpy(amPM, "AM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;} else {strcpy(amPM, "PM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours - 12;}
-      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
-    } else if (hour24) {
-      strcpy(amPM, "  ");
-      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
-    }
-    return String(alarmBuffer);
-  }
-}
-
 
 // --- SETUP ---
 void setup() {
@@ -285,7 +333,8 @@ void loop() {
     
     long movement = encoderRawCount / 4;                                        // DETECTS IF THE ENCODER HAS MOVED 
     
-    if (movement != lastEncoderRead) {                                          // IF MOVEMENT CHANGES FROM LAST
+    if (!alarmMode) {
+      if (movement != lastEncoderRead) {                                          // IF MOVEMENT CHANGES FROM LAST
         if (movement > lastEncoderRead) menuIndex++; else menuIndex--;          // CHANGE MENU + IF INCREASE AND - IF DECREASE
         lastEncoderRead = movement;                                             // SET LAST TO CURRENT
         
@@ -293,7 +342,14 @@ void loop() {
            currentState = NAV_MODE;                                             // BRING UP NAVIGATION
            menuIndex = 0;                                                       // SET MENU 0
         }
+      }
+    } else {
+      if (movement != lastEncoderRead) {                                          // IF MOVEMENT CHANGES FROM LAST
+        if (movement > lastEncoderRead) alarmMenuIndex++; else alarmMenuIndex--;          // CHANGE MENU + IF INCREASE AND - IF DECREASE
+        lastEncoderRead = movement;                                             // SET LAST TO CURRENT
+      }
     }
+    
   }
 
   // 2. LOGIC (50ms gate)
@@ -302,9 +358,10 @@ void loop() {
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
     // Timeout
-    unsigned long timeoutDuration = (currentState == NAV_MODE && menuIndex == 1) ? 10000 : 5000;      // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s
+    unsigned long timeoutDuration = (currentState == NAV_MODE && menuIndex == 1 && alarmMode == false) ? 10000 : 5000;      // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s
     if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       currentState = CLOCK_CLEAN;
+      alarmMode = false;
     }
 
     // State Machine
@@ -323,6 +380,10 @@ void loop() {
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBufferTime(true);                                                                    // GET toDisplayWords FOR TIME WITH NAV ARROWS
+          if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
+            lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
+            timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
+          }
         } else if (menuIndex == 1) {
           displayBuilder(" STOPWATCH  ", toDisplayWords, true);
           if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
@@ -348,7 +409,16 @@ void loop() {
         } else if (menuIndex == 4) {
           displayBuilder("  ALARM     ", toDisplayWords, true);
           if (buttonPressed && (now - timeLastPressed > 250)) {
+            timeLastPressed = now;
             currentState = ALARM;
+
+            menuIndex = 1;
+            menuClick = 0;
+            alarmMenuIndex = 0;
+            alarmMode = false;
+
+            encoderRawCount = 0;
+            lastEncoderRead = 0;
           }
         }
         break;
@@ -404,13 +474,11 @@ void loop() {
         break;
       }
       case ALARM: {
-        menuIndex = 1;
-        switch (menuIndex) {
-          case A_TIMESET: {
-            if (buttonPressed && (now - timeLastPressed > 250)) {
-              timeLastPressed = now;
-            }
-          }
+        String currentDisplay = alarmHandler(menuIndex, alarmMenuIndex, menuClick);
+        displayBuilder((char*)currentDisplay.c_str(), toDisplayWords, true);
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+          timeLastPressed = now;
+          menuClick++;
         }
       }
     }
