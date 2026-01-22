@@ -227,9 +227,15 @@ alarmData alarmTable[] = {
   {3,         0,      0,        0b00000000}
 };
 
-String selectedChar(bool selected, char currentSelection) {
+String selectedString(bool selected, int value, int minWidth) {
+  
+  char buf[10];
+  if (minWidth == 2) snprintf(buf, sizeof(buf), "%02d", value);
+  else snprintf(buf, sizeof(buf), "%d", value);
+  String valueStr = String(buf);
+
   if (!selected) {
-    return String(currentSelection);
+    return valueStr;
   }
 
   if (millis() - timeSinceLastFlash > 500) {
@@ -238,9 +244,10 @@ String selectedChar(bool selected, char currentSelection) {
   }
 
   if (flashState) {
+    if (minWidth == 2) return "##";
     return "#";
   } else {
-    return String(currentSelection);
+    return valueStr;
   }
 }
 
@@ -260,28 +267,46 @@ String alarmHandler(int menuIndex, int alarmMenuIndex, int menuClick) {
   int displayAlarmHours;
   char alarmBuffer[20];
   char amPM[3];
-  if (menuIndex == 1) {
-    if (!hour24) {
-      if ((alarmTable[alarmMenuIndex].alarmHours - 12) < 0) {strcpy(amPM, "AM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;} else {strcpy(amPM, "PM"); displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours - 12;}
 
-      if (menuClick == 0) {
-        snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
-
-      } else if (menuClick == 1) {
-        alarmMode = true;
-        snprintf(alarmBuffer, sizeof(alarmBuffer), " %s  %02d:%02d %s", selectedChar(true, alarmTable[alarmMenuIndex].alarm + '0').c_str(), displayAlarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
+  if (!hour24) {
+      if ((alarmTable[alarmMenuIndex].alarmHours - 12) < 0) {
+          strcpy(amPM, "AM"); 
+          displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;
+          if (displayAlarmHours == 0) displayAlarmHours = 12;
+      } else {
+          strcpy(amPM, "PM"); 
+          displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours - 12;
+          if (displayAlarmHours == 0) displayAlarmHours = 12;
       }
-
-    } else if (hour24) {
+  } else {
       strcpy(amPM, "  ");
-      snprintf(alarmBuffer, sizeof(alarmBuffer), " %01d  %02d:%02d %s", alarmTable[alarmMenuIndex].alarm, alarmTable[alarmMenuIndex].alarmHours, alarmTable[alarmMenuIndex].alarmMinutes, amPM);
-    }
+      displayAlarmHours = alarmTable[alarmMenuIndex].alarmHours;
+  }
+
+  if (menuIndex == 1) {
+
+    bool selAlarm  = (menuClick == 1);
+    bool selHour   = (menuClick == 2);
+    bool selMinute = (menuClick == 3);
+
+    snprintf(alarmBuffer, sizeof(alarmBuffer), " %s  %s:%s %s", 
+       selectedString(selAlarm,  alarmTable[alarmMenuIndex].alarm,        1).c_str(),
+       
+       selectedString(selHour,   displayAlarmHours,                       2).c_str(),
+      
+       selectedString(selMinute, alarmTable[alarmMenuIndex].alarmMinutes, 2).c_str(),
+       
+       amPM
+    );
+
     return String(alarmBuffer);
+
   } else if (menuIndex == 2) {
     snprintf(alarmBuffer, sizeof(alarmBuffer), "  %s%s%s%s%s%s%s   ", repeatDisplay(alarmMenuIndex, 0), repeatDisplay(alarmMenuIndex, 1), repeatDisplay(alarmMenuIndex, 2), repeatDisplay(alarmMenuIndex, 3), repeatDisplay(alarmMenuIndex, 4), repeatDisplay(alarmMenuIndex, 5), repeatDisplay(alarmMenuIndex, 6));
   } else {
     menuIndex = 1;
   }
+  
   return String(alarmBuffer);
 }
 
@@ -328,28 +353,53 @@ void loop() {
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
 
   // 1. INPUTS
-  if (hasMoved) {                                                           // IF ENCODER HAS CHANGED STATE
-    menuTimeout = now;                                                          // RESET TIMEROUT
+  if (hasMoved) {
+    menuTimeout = now; 
     
-    long movement = encoderRawCount / 4;                                        // DETECTS IF THE ENCODER HAS MOVED 
+    long movement = encoderRawCount / 4;
     
-    if (!alarmMode) {
-      if (movement != lastEncoderRead) {                                          // IF MOVEMENT CHANGES FROM LAST
-        if (movement > lastEncoderRead) menuIndex++; else menuIndex--;          // CHANGE MENU + IF INCREASE AND - IF DECREASE
-        lastEncoderRead = movement;                                             // SET LAST TO CURRENT
-        
-        if (currentState == CLOCK_CLEAN) {                                      // IF ON THE CLOCK
-           currentState = NAV_MODE;                                             // BRING UP NAVIGATION
-           menuIndex = 0;                                                       // SET MENU 0
+
+    if (currentState == CLOCK_CLEAN) {
+        if (movement != lastEncoderRead) {
+            currentState = NAV_MODE;
+            menuIndex = 0;
+            
+            lastEncoderRead = movement; 
         }
-      }
-    } else {
-      if (movement != lastEncoderRead) {                                          // IF MOVEMENT CHANGES FROM LAST
-        if (movement > lastEncoderRead) alarmMenuIndex++; else alarmMenuIndex--;          // CHANGE MENU + IF INCREASE AND - IF DECREASE
-        lastEncoderRead = movement;                                             // SET LAST TO CURRENT
-      }
+    } 
+
+    else if (currentState == NAV_MODE) {
+        if (movement != lastEncoderRead) {
+            if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
+            lastEncoderRead = movement;
+        }
+    } 
+
+    else if (currentState == ALARM) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+            
+            if (menuClick == 0 || menuClick == 1) { // Scroll Alarms
+                alarmMenuIndex += direction;
+                if (alarmMenuIndex < 0) alarmMenuIndex = 2;
+                if (alarmMenuIndex > 2) alarmMenuIndex = 0;
+            }
+            else if (menuClick == 2) { // Edit Hours
+                alarmTable[alarmMenuIndex].alarmHours += direction;
+                if (alarmTable[alarmMenuIndex].alarmHours > 23) alarmTable[alarmMenuIndex].alarmHours = 0;
+                if (alarmTable[alarmMenuIndex].alarmHours == 255) alarmTable[alarmMenuIndex].alarmHours = 23;
+            }
+            else if (menuClick == 3) { // Edit Minutes
+                alarmTable[alarmMenuIndex].alarmMinutes += direction;
+                if (alarmTable[alarmMenuIndex].alarmMinutes > 59) alarmTable[alarmMenuIndex].alarmMinutes = 0;
+                if (alarmTable[alarmMenuIndex].alarmMinutes == 255) alarmTable[alarmMenuIndex].alarmMinutes = 59;
+            }
+            
+            lastEncoderRead = movement;
+        }
     }
     
+    menuTimeout = now;
   }
 
   // 2. LOGIC (50ms gate)
@@ -358,7 +408,7 @@ void loop() {
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
     // Timeout
-    unsigned long timeoutDuration = (currentState == NAV_MODE && menuIndex == 1 && alarmMode == false) ? 10000 : 5000;      // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s
+    unsigned long timeoutDuration = (alarmMode) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
     if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       currentState = CLOCK_CLEAN;
       alarmMode = false;
@@ -407,7 +457,7 @@ void loop() {
           }
 
         } else if (menuIndex == 4) {
-          displayBuilder("  ALARM     ", toDisplayWords, true);
+          displayBuilder(" ALARM     ", toDisplayWords, true);
           if (buttonPressed && (now - timeLastPressed > 250)) {
             timeLastPressed = now;
             currentState = ALARM;
@@ -479,6 +529,12 @@ void loop() {
         if (buttonPressed && (now - timeLastPressed > 250)) {
           timeLastPressed = now;
           menuClick++;
+
+          if (menuClick > 3) {
+            menuClick = 0;
+            alarmMode = false;
+          }
+          menuTimeout = now;   
         }
       }
     }
