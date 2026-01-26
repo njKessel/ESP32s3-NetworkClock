@@ -133,7 +133,7 @@ void displayBufferTime(bool showArrows) {
   if (lastEncState) {hour24 = true;} else {hour24 = false;};
   struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
   if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows); // BUILD toDisplayWords FORMATTED
+    displayBuilder((char*)formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
   }
 }
 
@@ -260,9 +260,21 @@ String selectedText(bool selected, String text) {
 
   if (flashState) {
     String mask = "";
-    for(int i=0; i<text.length(); i++) mask += "#";
+    
+    for (int i = 0; i < text.length(); i++) {
+      char c = text[i];
+      
+      if (c != ':' && c != '.') {
+        mask += '#';
+      } 
+      else {
+        mask += c; 
+      }
+    }
     return mask;
-  } else {
+  }
+  
+  else {
     return text;
   }
 }
@@ -319,18 +331,16 @@ String alarmHandler(int menuIndex, int alarmMenuIndex, int menuClick) {
 
   } else if (menuIndex == 2) {
     
-    // In this menu, 'menuClick' acts as the cursor (0=Sun, 1=Mon, ... 6=Sat)
-    
     snprintf(alarmBuffer, sizeof(alarmBuffer), "  %s%s%s%s%s%s%s   ", 
-      selectedText((menuClick == 0), repeatDisplay(alarmMenuIndex, 0)).c_str(), // Sunday
-      selectedText((menuClick == 1), repeatDisplay(alarmMenuIndex, 1)).c_str(), // Monday
-      selectedText((menuClick == 2), repeatDisplay(alarmMenuIndex, 2)).c_str(), // Tuesday
-      selectedText((menuClick == 3), repeatDisplay(alarmMenuIndex, 3)).c_str(), // Wednesday
-      selectedText((menuClick == 4), repeatDisplay(alarmMenuIndex, 4)).c_str(), // Thursday
-      selectedText((menuClick == 5), repeatDisplay(alarmMenuIndex, 5)).c_str(), // Friday
-      selectedText((menuClick == 6), repeatDisplay(alarmMenuIndex, 6)).c_str()  // Saturday
+      selectedText((menuClick == 1), repeatDisplay(alarmMenuIndex, 0)).c_str(), // Sunday
+      selectedText((menuClick == 2), repeatDisplay(alarmMenuIndex, 1)).c_str(), // Monday
+      selectedText((menuClick == 3), repeatDisplay(alarmMenuIndex, 2)).c_str(), // Tuesday
+      selectedText((menuClick == 4), repeatDisplay(alarmMenuIndex, 3)).c_str(), // Wednesday
+      selectedText((menuClick == 5), repeatDisplay(alarmMenuIndex, 4)).c_str(), // Thursday
+      selectedText((menuClick == 6), repeatDisplay(alarmMenuIndex, 5)).c_str(), // Friday
+      selectedText((menuClick == 7), repeatDisplay(alarmMenuIndex, 6)).c_str()  // Saturday
     );
-    
+
   } else {
     menuIndex = 1;
   }
@@ -407,26 +417,33 @@ void loop() {
         if (movement != lastEncoderRead) {
             int direction = (movement > lastEncoderRead) ? 1 : -1;
             
-            
             if (menuClick == 0) {
-              if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
-              if (menuIndex < 1) {menuIndex = 2;};
-              if (menuIndex > 2) {menuIndex = 1;};
+               if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
+               
+               if (menuIndex < 1) menuIndex = 2;
+               if (menuIndex > 2) menuIndex = 1;
             }
-            else if (menuClick == 1) { // Scroll Alarms
-                alarmMenuIndex += direction;
-                if (alarmMenuIndex < 0) alarmMenuIndex = 2;
-                if (alarmMenuIndex > 2) alarmMenuIndex = 0;
+            
+            else if (menuIndex == 1) {
+                if (menuClick == 1) { // Choose alarm
+                    alarmMenuIndex += direction;
+                    if (alarmMenuIndex < 0) alarmMenuIndex = 2;
+                    if (alarmMenuIndex > 2) alarmMenuIndex = 0;
+                }
+                else if (menuClick == 2) { // Edit Hours
+                    alarmTable[alarmMenuIndex].alarmHours += direction;
+                    if (alarmTable[alarmMenuIndex].alarmHours > 23) alarmTable[alarmMenuIndex].alarmHours = 0;
+                    if (alarmTable[alarmMenuIndex].alarmHours == 255) alarmTable[alarmMenuIndex].alarmHours = 23;
+                }
+                else if (menuClick == 3) { // Edit Minutes
+                    alarmTable[alarmMenuIndex].alarmMinutes += direction;
+                    if (alarmTable[alarmMenuIndex].alarmMinutes > 59) alarmTable[alarmMenuIndex].alarmMinutes = 0;
+                    if (alarmTable[alarmMenuIndex].alarmMinutes == 255) alarmTable[alarmMenuIndex].alarmMinutes = 59;
+                }
             }
-            else if (menuClick == 2) { // Edit Hours
-                alarmTable[alarmMenuIndex].alarmHours += direction;
-                if (alarmTable[alarmMenuIndex].alarmHours > 23) alarmTable[alarmMenuIndex].alarmHours = 0;
-                if (alarmTable[alarmMenuIndex].alarmHours == 255) alarmTable[alarmMenuIndex].alarmHours = 23;
-            }
-            else if (menuClick == 3) { // Edit Minutes
-                alarmTable[alarmMenuIndex].alarmMinutes += direction;
-                if (alarmTable[alarmMenuIndex].alarmMinutes > 59) alarmTable[alarmMenuIndex].alarmMinutes = 0;
-                if (alarmTable[alarmMenuIndex].alarmMinutes == 255) alarmTable[alarmMenuIndex].alarmMinutes = 59;
+            
+            else if (menuIndex == 2) { 
+                alarmTable[alarmMenuIndex].repeatDays ^= (1 << (menuClick - 1)); 
             }
             
             lastEncoderRead = movement;
@@ -560,14 +577,22 @@ void loop() {
       case ALARM: {
         String currentDisplay = alarmHandler(menuIndex, alarmMenuIndex, menuClick);
         displayBuilder((char*)currentDisplay.c_str(), toDisplayWords, true);
+        
         if (buttonPressed && (now - timeLastPressed > 250)) {
           timeLastPressed = now;
-          menuClick++;
+          menuClick++; 
 
-          if (menuClick > 3) {
-            menuClick = 0;
-            alarmMode = false;
+          if (menuIndex == 1) {
+             if (menuClick > 3) {
+               menuClick = 0;
+             }
           }
+          else if (menuIndex == 2) {
+             if (menuClick > 7) {
+                menuClick = 0;
+             }
+          }
+          
           menuTimeout = now;   
         }
       }
