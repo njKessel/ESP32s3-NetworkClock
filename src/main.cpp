@@ -12,6 +12,8 @@ WORK IN PROGRESS                ESP32-S3
 #include "secrets.h"          // WIFI CRED          
 #include "display_font.h"     // CHAR DISPLAY HANDLER
 
+#include "stopwatch.h"        // STOPWATCH CLASS
+
 #include <string>
 
 // --- STATE MACHINE ---
@@ -348,19 +350,7 @@ String alarmHandler(int menuIndex, int alarmMenuIndex, int menuClick) {
   return String(alarmBuffer);
 }
 
-String stopwatchFormat(unsigned long long stopwatchTime) {
-  unsigned long totalSeconds = stopwatchTime / 1000;
-  
-  int SWhours   = totalSeconds / 3600;
-  int SWminutes = (totalSeconds / 60) % 60;
-  int SWseconds = totalSeconds % 60;
-  int SWmillis  = stopwatchTime % 1000;
-
-  char timeBuffer[20]; 
-  snprintf(timeBuffer, sizeof(timeBuffer), "%02d:%02d:%02d:%03d", SWhours, SWminutes, SWseconds, SWmillis);
-
-  return String(timeBuffer) + "  ";
-}
+Stopwatch stopwatchTool;
 
 // --- SETUP ---
 void setup() {
@@ -544,39 +534,19 @@ void loop() {
         }
         break;
         
+
       case STOPWATCH: { 
-        static bool swRunning = false;
-        static unsigned long long swStartTime = 0;
-        static unsigned long long swAccumulatedTime = 0;
-
-
-        unsigned long long currentDuration = swAccumulatedTime;
-        if (swRunning) {
-          currentDuration += (millis() - swStartTime);
-          menuTimeout = now; 
-        }
-
-        displayBuilder((char*)stopwatchFormat(currentDuration).c_str(), toDisplayWords, true);
+        displayBuilder((char*)stopwatchTool.getFormattedTime().c_str(), toDisplayWords, false);
 
         if (buttonPressed && (now - timeLastPressed > 250)) {
           timeLastPressed = now; 
-
-          if (swRunning) {
-            swAccumulatedTime += (millis() - swStartTime);
-            swRunning = false;
-          } else {
-            swStartTime = millis();
-            swRunning = true;
-          }
+          stopwatchTool.toggle();
         }
 
         if (hasMoved) {
           currentState = NAV_MODE;
-
-          swRunning = false;
-          swAccumulatedTime = 0; 
-          
-          encoderMoved = false; 
+          stopwatchTool.reset();
+          encoderMoved = false;
         }
         
         break;
