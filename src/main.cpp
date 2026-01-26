@@ -449,6 +449,13 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == TZ_SELECT) {
+        if (movement != lastEncoderRead) {
+            if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
