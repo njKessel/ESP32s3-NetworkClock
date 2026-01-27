@@ -92,13 +92,31 @@ void Timer::onButtonPress() {
         if (editField > 2) editField = 0;
     } else {
         if (currentTimer == 0) {
-            runningT1 = !runningT1;
+            if (!runningT1) {
+                startTimeT1 = millis();
+                runningT1 = true;
+            } else {
+                timeElapsedT1 += (millis() - startTimeT1);
+                runningT1 = false;
+            }
             delay(250);
         } else if (currentTimer == 1) {
-            runningT2 = !runningT2;
+            if (!runningT2) {
+                startTimeT2 = millis();
+                runningT2 = true;
+            } else {
+                timeElapsedT2 += (millis() - startTimeT2);
+                runningT2 = false;
+            }
             delay(250);
         } else if (currentTimer == 2) {
-            runningT3 = !runningT3;
+            if (!runningT3) {
+                startTimeT3 = millis();
+                runningT3 = true;
+            } else {
+                timeElapsedT3 += (millis() - startTimeT3);
+                runningT3 = false;
+            }
             delay(250);
         }
     }
@@ -115,17 +133,21 @@ String Timer::getTimerDisplay() {
     millisT2 = ((table[1].timerMinute*60000) + (table[1].timerHours*3600000));
     millisT3 = ((table[2].timerMinute*60000) + (table[2].timerHours*3600000));
 
+    unsigned long currentTotalElapsedT1 = timeElapsedT1;
+    unsigned long currentTotalElapsedT2 = timeElapsedT2;
+    unsigned long currentTotalElapsedT3 = timeElapsedT3;
+
     if (runningT1) {
-        timeElapsedT1 += (millis() - startTimeT1);
+        currentTotalElapsedT1 += (millis() - startTimeT1);
     } else if (runningT2) {
-        timeElapsedT2 += (millis() - startTimeT2);
+        currentTotalElapsedT2 += (millis() - startTimeT2);
     } else if (runningT3) {
-        timeElapsedT3 += (millis() - startTimeT3);
+        currentTotalElapsedT3 += (millis() - startTimeT3);
     }
 
-    currentRemainingT1 = millisT1 - timeElapsedT1;
-    currentRemainingT2 = millisT2 - timeElapsedT2;
-    currentRemainingT3 = millisT3 - timeElapsedT3;
+    currentRemainingT1 = millisT1 - currentTotalElapsedT1;
+    currentRemainingT2 = millisT2 - currentTotalElapsedT2;
+    currentRemainingT3 = millisT3 - currentTotalElapsedT3;
 
     int minutesRemainingT1 = ((currentRemainingT1 / 1000) / 60) % 60;
     int minutesRemainingT2 = ((currentRemainingT2 / 1000) / 60) % 60;

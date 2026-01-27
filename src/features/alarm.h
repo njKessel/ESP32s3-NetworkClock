@@ -41,7 +41,6 @@ class Alarm {
         String getDayString();
         String getTimeString(bool hour24);
 
-        String selected();
         bool shouldRing(int alarmIndex);
 };
 

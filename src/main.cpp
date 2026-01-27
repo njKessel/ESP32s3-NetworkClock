@@ -17,6 +17,7 @@ WORK IN PROGRESS                ESP32-S3
 #include "features/alarm.h"
 #include "features/timezone.h"
 #include "features/notification.h"
+#include "features/timer.h"
 
 #include <string>
 
@@ -27,7 +28,7 @@ enum SystemState {
   TZ_SELECT,      // TIME ZONE MENU
   STOPWATCH,
   ALARM,
-  TIMER,
+  MODE_TIMER,
   NOTIFICATION,
 };
 
@@ -159,6 +160,7 @@ Stopwatch stopwatchTool;
 Alarm alarmTool;
 TimeZoneSetting tzTool;
 Notification notifTool;
+Timer timerTool;
 
 // --- SETUP ---
 void setup() {
@@ -371,7 +373,8 @@ void loop() {
 
         break;
       }
-      case TIMER: {
+      case MODE_TIMER: {
+        displayBuilder((char*)timerTool.getTimerDisplay().c_str(), toDisplayWords, true);
         break;
       }
       case NOTIFICATION: {
@@ -379,7 +382,7 @@ void loop() {
         if (activeAlarm == 0) {
           message = "ALARM 1";
         } else if (activeAlarm == 1) {
-          message = "ALARM 2";
+          message = "ALARM 2";  
         } else if (activeAlarm == 2) {
           message = "ALARM 3";
         }
