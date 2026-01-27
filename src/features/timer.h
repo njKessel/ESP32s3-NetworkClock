@@ -21,7 +21,7 @@ class Timer {
 
         unsigned long millisT1; unsigned long millisT2; unsigned long millisT3;
         bool runningT1; bool runningT2; bool runningT3;
-
+        bool pausedT1; bool pausedT2; bool pausedT3;
         bool editMode;
 
         int currentTimer;

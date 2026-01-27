@@ -10,6 +10,10 @@ Timer::Timer() {
     runningT2 = false;
     runningT3 = false;
 
+    pausedT1 = false;
+    pausedT2 = false;
+    pausedT3 = false;
+
     timeElapsedT1 = 0;
     timeElapsedT2 = 0;
     timeElapsedT3 = 0;
@@ -63,7 +67,7 @@ void Timer::onKnobTurn(int direction) {
 
 void Timer::onModButtonPress() {
     if (currentTimer == 0) {
-        if (!runningT1) {
+        if (!runningT1 && !pausedT1) {
             if (editMode) {
                 editField = 0;
             } else {
@@ -71,11 +75,12 @@ void Timer::onModButtonPress() {
             }
             editMode = !editMode;
         } else {
+            pausedT1 = false;
             runningT1 = false;
             timeElapsedT1 = 0;
         }
     } else if (currentTimer == 1) {
-        if (!runningT2) {
+        if (!runningT2 && !pausedT2) {
             if (editMode) {
                 editField = 0;
             } else {
@@ -83,11 +88,12 @@ void Timer::onModButtonPress() {
             }
             editMode = !editMode;
         } else {
+            pausedT2 = false;
             runningT2 = false;
             timeElapsedT2 = 0;
         }
     } else if (currentTimer == 2) {
-        if (!runningT3) {
+        if (!runningT3 && !pausedT3) {
             if (editMode) {
                 editField = 0;
             } else {
@@ -95,6 +101,7 @@ void Timer::onModButtonPress() {
             }
             editMode = !editMode;
         } else {
+            pausedT3 = false;
             runningT3 = false;
             timeElapsedT3 = 0;
         }
@@ -110,27 +117,33 @@ void Timer::onButtonPress() {
             if (!runningT1) {
                 startTimeT1 = millis();
                 runningT1 = true;
+                pausedT1 = false;
             } else {
                 timeElapsedT1 += (millis() - startTimeT1);
                 runningT1 = false;
+                pausedT1 = true;
             }
             delay(250);
         } else if (currentTimer == 1) {
             if (!runningT2) {
                 startTimeT2 = millis();
                 runningT2 = true;
+                pausedT2 = false;
             } else {
                 timeElapsedT2 += (millis() - startTimeT2);
                 runningT2 = false;
+                pausedT2 = true;
             }
             delay(250);
         } else if (currentTimer == 2) {
             if (!runningT3) {
                 startTimeT3 = millis();
                 runningT3 = true;
+                pausedT3 = false;
             } else {
                 timeElapsedT3 += (millis() - startTimeT3);
                 runningT3 = false;
+                pausedT3 = true;
             }
             delay(250);
         }
@@ -156,17 +169,21 @@ String Timer::getTimerDisplay() {
 
     if (runningT1) {
         currentTotalElapsedT1 += (millis() - startTimeT1);
-    } else if (runningT2) {
+    } 
+    if (runningT2) {
         currentTotalElapsedT2 += (millis() - startTimeT2);
-    } else if (runningT3) {
+    } 
+    if (runningT3) {
         currentTotalElapsedT3 += (millis() - startTimeT3);
     }
 
     if (currentTotalElapsedT1 > millisT1) {
         currentTotalElapsedT1 = millisT1;
-    } else if (currentTotalElapsedT2 > millisT2) {
+    } 
+    if (currentTotalElapsedT2 > millisT2) {
         currentTotalElapsedT2 = millisT2;
-    } else if (currentTotalElapsedT3 > millisT3) {
+    }
+    if (currentTotalElapsedT3 > millisT3) {
         currentTotalElapsedT3 = millisT3;
     }
 
@@ -192,7 +209,7 @@ String Timer::getTimerDisplay() {
     char timerMinuteDisp[3];
     char timerSecondDisp[3];
     if (currentTimer == 0) {
-        if (runningT1) {
+        if (runningT1 || pausedT1) {
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT1);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT1);
             snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT1);
@@ -210,7 +227,7 @@ String Timer::getTimerDisplay() {
             );
         }
     } else if (currentTimer == 1) {
-        if (runningT2) {
+        if (runningT2 || pausedT2) {
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT2);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT2);
             snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT2);
@@ -228,7 +245,7 @@ String Timer::getTimerDisplay() {
             );
         }
     } else if (currentTimer == 2) {
-        if (runningT3) {
+        if (runningT3 || pausedT3) {
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT3);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT3);
             snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT3);
