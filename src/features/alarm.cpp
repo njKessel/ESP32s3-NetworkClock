@@ -11,6 +11,20 @@ Alarm::Alarm() {
     table[2] = {3,         0,      0,        0b00000000};
 }
 
+void Alarm::begin() {
+    prefs.begin("alarm-data", false);
+
+    if (prefs.isKey("table")) {
+        prefs.getBytes("table", table, sizeof(table));
+    }
+}
+
+void Alarm::save() {
+    prefs.putBytes("table", table, sizeof(table));
+}
+
+
+
 void Alarm::onKnobTurn(int direction) {
     if (editField == 0) {
         pageIndex += direction;
