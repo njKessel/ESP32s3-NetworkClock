@@ -5,6 +5,11 @@ Timer::Timer() {
     currentTimer = 0;
     editField = 0;
     editMode = false;
+
+    runningT1 = false;
+    runningT2 = false;
+    runningT3 = false;
+
     timeElapsedT1 = 0;
     timeElapsedT2 = 0;
     timeElapsedT3 = 0;
@@ -169,10 +174,14 @@ String Timer::getTimerDisplay() {
 
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
+            String s_id = selector.getBlinkText(editField == 0, table[0].timerID,     1);
+            String s_hr = selector.getBlinkText(editField == 1, table[0].timerHours,  2);
+            String s_mn = selector.getBlinkText(editField == 2, table[0].timerMinute, 2);
+
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
-                selector.getBlinkText(editField == 0, table[0].timerID,     1).c_str(),
-                selector.getBlinkText(editField == 1, table[0].timerHours,  2).c_str(),
-                selector.getBlinkText(editField == 2, table[0].timerMinute, 2).c_str()
+                s_id.c_str(),
+                s_hr.c_str(),
+                s_mn.c_str()
             );
         }
     } else if (currentTimer == 1) {
@@ -183,10 +192,14 @@ String Timer::getTimerDisplay() {
 
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
+            String s_id = selector.getBlinkText(editField == 0, table[1].timerID,     1);
+            String s_hr = selector.getBlinkText(editField == 1, table[1].timerHours,  2);
+            String s_mn = selector.getBlinkText(editField == 2, table[1].timerMinute, 2);
+
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
-                selector.getBlinkText(editField == 0, table[1].timerID,     1).c_str(),
-                selector.getBlinkText(editField == 1, table[1].timerHours,  2).c_str(),
-                selector.getBlinkText(editField == 2, table[1].timerMinute, 2).c_str()
+                s_id.c_str(),
+                s_hr.c_str(),
+                s_mn.c_str()
             );
         }
     } else if (currentTimer == 2) {
@@ -197,10 +210,14 @@ String Timer::getTimerDisplay() {
 
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
-                selector.getBlinkText(editField == 0, table[2].timerID,     1).c_str(),
-                selector.getBlinkText(editField == 1, table[2].timerHours,  2).c_str(),
-                selector.getBlinkText(editField == 2, table[2].timerMinute, 2).c_str()
+            String s_id = selector.getBlinkText(editField == 0, table[2].timerID,     1);
+            String s_hr = selector.getBlinkText(editField == 1, table[2].timerHours,  2);
+            String s_mn = selector.getBlinkText(editField == 2, table[2].timerMinute, 2);
+
+            snprintf(timerBuffer, sizeof(timerBuffer), " %s   %s:%s   ",
+                s_id.c_str(),
+                s_hr.c_str(),
+                s_mn.c_str()
             );
         }
     }

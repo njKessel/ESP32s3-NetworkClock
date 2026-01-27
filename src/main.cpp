@@ -298,7 +298,6 @@ void loop() {
       alarmTool.reset();
       timerTool.reset();
       stopwatchTool.reset();
-      tzTool.reset();
       currentState = CLOCK_CLEAN;
     }
 
