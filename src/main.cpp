@@ -141,8 +141,6 @@ void displayBufferTime(bool showArrows) {
 
   if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
     displayBuilder((char*)formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
-  } else {
-    displayBuilder("  SYNCING   ", toDisplayWords, false);
   }
 }
 

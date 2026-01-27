@@ -43,12 +43,7 @@ void Timer::factoryReset() {
 
 void Timer::onKnobTurn(int direction) {
     if (editMode) {
-        if (editField == 0) {           // CHANGE TIMERS
-            currentTimer += direction;
-            if (currentTimer > 2) currentTimer = 0;
-            if (currentTimer < 0) currentTimer = 2;
-
-        } else if (editField == 1) {    // CHANGE HOURS
+        if (editField == 1) {    // CHANGE HOURS
             table[currentTimer].timerHours += direction;
             if (table[currentTimer].timerHours > 99) table[currentTimer].timerHours = 0;
             if (table[currentTimer].timerHours == 255) table[currentTimer].timerHours = 99;
@@ -69,21 +64,36 @@ void Timer::onKnobTurn(int direction) {
 void Timer::onModButtonPress() {
     if (currentTimer == 0) {
         if (!runningT1) {
-            editMode = true;
+            if (editMode) {
+                editField = 0;
+            } else {
+                editField = 1;
+            }
+            editMode = !editMode;
         } else {
             runningT1 = false;
             timeElapsedT1 = 0;
         }
     } else if (currentTimer == 1) {
         if (!runningT2) {
-            editMode = true;
+            if (editMode) {
+                editField = 0;
+            } else {
+                editField = 1;
+            }
+            editMode = !editMode;
         } else {
             runningT2 = false;
             timeElapsedT2 = 0;
         }
     } else if (currentTimer == 2) {
         if (!runningT3) {
-            editMode = true;
+            if (editMode) {
+                editField = 0;
+            } else {
+                editField = 1;
+            }
+            editMode = !editMode;
         } else {
             runningT3 = false;
             timeElapsedT3 = 0;
@@ -94,7 +104,7 @@ void Timer::onModButtonPress() {
 void Timer::onButtonPress() {
     if (editMode) {
         editField++;
-        if (editField > 2) editField = 0;
+        if (editField > 2) editField = 1;
     } else {
         if (currentTimer == 0) {
             if (!runningT1) {
@@ -134,9 +144,11 @@ void Timer::reset() {
 }
 
 String Timer::getTimerDisplay() {
-    millisT1 = ((table[0].timerMinute*60000) + (table[0].timerHours*3600000));
-    millisT2 = ((table[1].timerMinute*60000) + (table[1].timerHours*3600000));
-    millisT3 = ((table[2].timerMinute*60000) + (table[2].timerHours*3600000));
+    selector.update();
+
+    millisT1 = (((unsigned long)table[0].timerMinute*60000) + ((unsigned long)table[0].timerHours*3600000));
+    millisT2 = (((unsigned long)table[1].timerMinute*60000) + ((unsigned long)table[1].timerHours*3600000));
+    millisT3 = (((unsigned long)table[2].timerMinute*60000) + ((unsigned long)table[2].timerHours*3600000));
 
     unsigned long currentTotalElapsedT1 = timeElapsedT1;
     unsigned long currentTotalElapsedT2 = timeElapsedT2;
@@ -150,9 +162,21 @@ String Timer::getTimerDisplay() {
         currentTotalElapsedT3 += (millis() - startTimeT3);
     }
 
+    if (currentTotalElapsedT1 > millisT1) {
+        currentTotalElapsedT1 = millisT1;
+    } else if (currentTotalElapsedT2 > millisT2) {
+        currentTotalElapsedT2 = millisT2;
+    } else if (currentTotalElapsedT3 > millisT3) {
+        currentTotalElapsedT3 = millisT3;
+    }
+
     currentRemainingT1 = millisT1 - currentTotalElapsedT1;
     currentRemainingT2 = millisT2 - currentTotalElapsedT2;
     currentRemainingT3 = millisT3 - currentTotalElapsedT3;
+
+    int secondsRemainingT1 = ((currentRemainingT1 / 1000) % 60);
+    int secondsRemainingT2 = ((currentRemainingT2 / 1000) % 60);
+    int secondsRemainingT3 = ((currentRemainingT3 / 1000) % 60);
 
     int minutesRemainingT1 = ((currentRemainingT1 / 1000) / 60) % 60;
     int minutesRemainingT2 = ((currentRemainingT2 / 1000) / 60) % 60;
@@ -166,19 +190,20 @@ String Timer::getTimerDisplay() {
     char timerIDDisp[2];
     char timerHourDisp[3];
     char timerMinuteDisp[3];
+    char timerSecondDisp[3];
     if (currentTimer == 0) {
         if (runningT1) {
-            snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT1);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT1);
+            snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT1);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
+            snprintf(timerBuffer, sizeof(timerBuffer), "  %s:%s:%s  ", timerHourDisp, timerMinuteDisp, timerSecondDisp);
         } else {
-            String s_id = selector.getBlinkText(editField == 0, table[0].timerID,     1);
+            String s_id = selector.getBlinkText(false, table[0].timerID,     1);
             String s_hr = selector.getBlinkText(editField == 1, table[0].timerHours,  2);
             String s_mn = selector.getBlinkText(editField == 2, table[0].timerMinute, 2);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
+            snprintf(timerBuffer, sizeof(timerBuffer), " %s  %s:%s    ",
                 s_id.c_str(),
                 s_hr.c_str(),
                 s_mn.c_str()
@@ -186,17 +211,17 @@ String Timer::getTimerDisplay() {
         }
     } else if (currentTimer == 1) {
         if (runningT2) {
-            snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT2);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT2);
+            snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT2);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
+            snprintf(timerBuffer, sizeof(timerBuffer), "  %s:%s:%s  ", timerHourDisp, timerMinuteDisp, timerSecondDisp);
         } else {
-            String s_id = selector.getBlinkText(editField == 0, table[1].timerID,     1);
+            String s_id = selector.getBlinkText(false, table[1].timerID,     1);
             String s_hr = selector.getBlinkText(editField == 1, table[1].timerHours,  2);
             String s_mn = selector.getBlinkText(editField == 2, table[1].timerMinute, 2);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
+            snprintf(timerBuffer, sizeof(timerBuffer), " %s  %s:%s    ",
                 s_id.c_str(),
                 s_hr.c_str(),
                 s_mn.c_str()
@@ -204,17 +229,17 @@ String Timer::getTimerDisplay() {
         }
     } else if (currentTimer == 2) {
         if (runningT3) {
-            snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT3);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT3);
+            snprintf(timerSecondDisp, sizeof(timerSecondDisp), "%02d", secondsRemainingT3);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
+            snprintf(timerBuffer, sizeof(timerBuffer), "  %s:%s:%s  ", timerHourDisp, timerMinuteDisp, timerSecondDisp);
         } else {
-            String s_id = selector.getBlinkText(editField == 0, table[2].timerID,     1);
+            String s_id = selector.getBlinkText(false, table[2].timerID,     1);
             String s_hr = selector.getBlinkText(editField == 1, table[2].timerHours,  2);
             String s_mn = selector.getBlinkText(editField == 2, table[2].timerMinute, 2);
 
-            snprintf(timerBuffer, sizeof(timerBuffer), " %s   %s:%s   ",
+            snprintf(timerBuffer, sizeof(timerBuffer), " %s  %s:%s    ",
                 s_id.c_str(),
                 s_hr.c_str(),
                 s_mn.c_str()
@@ -225,28 +250,29 @@ String Timer::getTimerDisplay() {
 }
 
 bool Timer::shouldRing(int timerIndex) {
-    if (timerIndex == 1) {
-        if (timeElapsedT1 >= millisT1) {
-            return true;
-        } else {
-            return false;
-        }
+    unsigned long target = 0;
+    unsigned long currentElapsed = 0;
 
+    if (timerIndex == 1) {
+        target = ((unsigned long)table[0].timerMinute * 60000) + ((unsigned long)table[0].timerHours * 3600000);
+        
+        currentElapsed = timeElapsedT1;
+        if (runningT1) currentElapsed += (millis() - startTimeT1);
+        
     } else if (timerIndex == 2) {
-        if (timeElapsedT2 >= millisT2) {
-            return true;
-        } else {
-            return false;
-        }
+        target = ((unsigned long)table[1].timerMinute * 60000) + ((unsigned long)table[1].timerHours * 3600000);
+        currentElapsed = timeElapsedT2;
+        if (runningT2) currentElapsed += (millis() - startTimeT2);
 
     } else if (timerIndex == 3) {
-        if (timeElapsedT3 >= millisT3) {
-            return true;
-        } else {
-            return false;
-        }
-
-    } else {
-        return false;
+        target = ((unsigned long)table[2].timerMinute * 60000) + ((unsigned long)table[2].timerHours * 3600000);
+        currentElapsed = timeElapsedT3;
+        if (runningT3) currentElapsed += (millis() - startTimeT3);
     }
+
+    if (currentElapsed >= target && target > 0) {
+        return true;
+    }
+    
+    return false;
 }
