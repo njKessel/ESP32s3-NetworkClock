@@ -52,6 +52,10 @@ constexpr int PIN_ENCODER_PUSH = 8;     // PIN FOR PRESSING ENCODER
 constexpr int PIN_ENCODER_A = 9;        // PIN A ON ENCODER
 constexpr int PIN_ENCODER_B = 10;       // PIN B ON ENCODER
 
+// --- BUTTONS ---
+constexpr int PIN_HOME_BUTTON = 5;
+constexpr int PIN_MOD_BUTTON  = 6;
+
 volatile long encoderRawCount = 0;      // INIT FOR TRACKING PULSES FROM ENCODER
 long lastEncoderRead = 0;               // INIT TIMER SINCE LAST ENCODER READ
 
@@ -142,6 +146,11 @@ void displayBufferTime(bool showArrows) {
   }
 }
 
+bool buttonDetect(bool buttonPressed, unsigned long now) {
+  if (buttonPressed && (now - timeLastPressed > 250)) return true;
+  return false;
+}
+
 void WiFisetup(){                                                         
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);                                         // BEGIN CONNECTING TO WIFI USING GIVEN SSID AND PASSWORD
   displayBuilder(" CONNECTING ", toDisplayWords, false);                        // BUILD toDisplayWords TO SHOW CONNECTING MESSAGE
@@ -178,6 +187,8 @@ void setup() {
     }
   }
   alarmTool.begin();
+  pinMode(PIN_HOME_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_MOD_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
   pinMode(PIN_OE, OUTPUT);                                                      // DEFINE OE AS OUTPUT
   digitalWrite(PIN_OE, LOW);                                                    // SET OE LOW FOR MAX BRIGHTNESS
@@ -201,6 +212,8 @@ void loop() {
   if (hasMoved) encoderMoved = false;
 
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
+  bool homeButtonPressed = (digitalRead(PIN_HOME_BUTTON) == LOW);
+  bool modButtonPressed = (digitalRead(PIN_MOD_BUTTON) == LOW);
 
   // 1. INPUTS
   if (hasMoved) {
@@ -244,6 +257,16 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == MODE_TIMER) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+
+            timerTool.onKnobTurn(direction);
+
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
@@ -269,6 +292,14 @@ void loop() {
       }
       currentState = CLOCK_CLEAN;
       alarmTool.reset();
+    }
+
+    if (buttonDetect(homeButtonPressed, now)) {
+      alarmTool.reset();
+      timerTool.reset();
+      stopwatchTool.reset();
+      tzTool.reset();
+      currentState = CLOCK_CLEAN;
     }
 
     if (currentState != NOTIFICATION) {
@@ -312,7 +343,12 @@ void loop() {
           }
         } else if (menuIndex == 2) {
           displayBuilder(" TIMER      ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = MODE_TIMER;
 
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
         } else if (menuIndex == 3) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
           if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
@@ -375,6 +411,19 @@ void loop() {
       }
       case MODE_TIMER: {
         displayBuilder((char*)timerTool.getTimerDisplay().c_str(), toDisplayWords, true);
+
+        if (buttonDetect(buttonPressed, now)) {
+          timeLastPressed = now;
+          timerTool.onButtonPress();
+          menuTimeout = now;
+        }
+
+        if (buttonDetect(modButtonPressed, now)) {
+          timeLastPressed = now;
+          timerTool.onModButtonPress();
+          menuTimeout = now;
+        }
+
         break;
       }
       case NOTIFICATION: {
