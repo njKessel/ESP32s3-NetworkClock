@@ -144,6 +144,8 @@ String Timer::getTimerDisplay() {
             snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT1);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT1);
+            
+            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
                 selector.getBlinkText(editField == 0, table[0].timerID,     1).c_str(),
@@ -156,6 +158,8 @@ String Timer::getTimerDisplay() {
             snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT2);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT2);
+
+            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
                 selector.getBlinkText(editField == 0, table[1].timerID,     1).c_str(),
@@ -168,6 +172,8 @@ String Timer::getTimerDisplay() {
             snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT3);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT3);
+
+            snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
                 selector.getBlinkText(editField == 0, table[2].timerID,     1).c_str(),
@@ -200,7 +206,7 @@ bool Timer::shouldRing(int timerIndex) {
         } else {
             return false;
         }
-        
+
     } else {
         return false;
     }
