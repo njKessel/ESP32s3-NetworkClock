@@ -11,10 +11,12 @@ WORK IN PROGRESS                ESP32-S3
 
 #include "secrets.h"          // WIFI CRED          
 #include "display_font.h"     // CHAR DISPLAY HANDLER
+#include "selection_util.h"
 
 #include "features/stopwatch.h"        // STOPWATCH CLASS
 #include "features/alarm.h"
 #include "features/timezone.h"
+#include "features/notification.h"
 
 #include <string>
 
@@ -25,7 +27,8 @@ enum SystemState {
   TZ_SELECT,      // TIME ZONE MENU
   STOPWATCH,
   ALARM,
-  TIMER
+  TIMER,
+  NOTIFICATION,
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -35,6 +38,7 @@ unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
 uint64_t toDisplayWords[12];            // INIT ARRAY FOR THE PATTERNS SENT TO THE SHIFT REGISTERS
 unsigned long lastUpdate = 0;           // INIT TIME SINCE THE LAST SCREEN MUX
 bool hour24;
+int activeAlarm = -1;
 
 // --- PIN DEFINITIONS ---
 constexpr int PIN_COPI  = 13;           // SPI SERIAL
@@ -154,6 +158,7 @@ void initTime(const char* tz) {
 Stopwatch stopwatchTool;
 Alarm alarmTool;
 TimeZoneSetting tzTool;
+Notification notifTool;
 
 // --- SETUP ---
 void setup() {
@@ -256,12 +261,25 @@ void loop() {
 
     // Timeout
     unsigned long timeoutDuration = (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
-    if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
+    if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && currentState != NOTIFICATION && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       if (currentState == ALARM) {
           alarmTool.save();
       }
       currentState = CLOCK_CLEAN;
       alarmTool.reset();
+    }
+
+    if (currentState != NOTIFICATION) {
+      if (alarmTool.shouldRing(0)) {
+        activeAlarm = 0;
+        currentState = NOTIFICATION;
+      } else if (alarmTool.shouldRing(1)) {
+        activeAlarm = 1;
+        currentState = NOTIFICATION;
+      } else if (alarmTool.shouldRing(2)) {
+        activeAlarm = 2;
+        currentState = NOTIFICATION;
+      }
     }
 
     // State Machine
@@ -355,6 +373,24 @@ void loop() {
       }
       case TIMER: {
         break;
+      }
+      case NOTIFICATION: {
+        const char* message = "";
+        if (activeAlarm == 0) {
+          message = "ALARM 1";
+        } else if (activeAlarm == 1) {
+          message = "ALARM 2";
+        } else if (activeAlarm == 2) {
+          message = "ALARM 3";
+        }
+
+        displayBuilder((char*)notifTool.getNotificationDisplay(message).c_str(), toDisplayWords, false);
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+            activeAlarm = -1;
+            timeLastPressed = now;
+            currentState = CLOCK_CLEAN;
+        }
       }
     }
   }

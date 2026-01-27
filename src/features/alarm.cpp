@@ -1,9 +1,11 @@
 #include "alarm.h"
+#include <time.h>
 
 Alarm::Alarm() {
     currentAlarm = 0;
     editField = 0;
     pageIndex = 1;
+    lastTriggeredMinute = -1;
 
              // ALARM #    HOUR    MINUTE    DAYS
     table[0] = {1,         6,      30,       0b00111110};
@@ -149,4 +151,28 @@ String Alarm::getDayString() {
 
     dayString += "   ";
     return dayString;
+}
+
+bool Alarm::shouldRing(int alarmIndex) {
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) {
+        return false;
+    }
+
+    if (timeinfo.tm_min == lastTriggeredMinute) return false;
+    
+    int todayIndex = timeinfo.tm_wday;
+
+    bool isEnabledToday = (table[alarmIndex].alarmDays >> todayIndex) & 1;
+
+    bool ring = isEnabledToday &&
+        (timeinfo.tm_hour == table[alarmIndex].alarmHours) && 
+        (timeinfo.tm_min  == table[alarmIndex].alarmMinutes) &&
+        (timeinfo.tm_sec  == 0);
+
+    if (ring) {
+        lastTriggeredMinute = timeinfo.tm_min;
+        return true;
+    }
+    return false;
 }

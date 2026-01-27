@@ -19,6 +19,7 @@ class Alarm {
         int currentAlarm;
         int editField;
         int pageIndex;
+        int lastTriggeredMinute;
 
         selectionUtility selector;
         Preferences prefs;
@@ -41,6 +42,7 @@ class Alarm {
         String getTimeString(bool hour24);
 
         String selected();
+        bool shouldRing(int alarmIndex);
 };
 
 
