@@ -24,7 +24,8 @@ enum SystemState {
   NAV_MODE,        // MENU WITH NAVIGATION ARROWS, IND 0 IS CLOCK + NAV, IND 1 IS TIME ZONE
   TZ_SELECT,      // TIME ZONE MENU
   STOPWATCH,
-  ALARM
+  ALARM,
+  TIMER
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -157,13 +158,25 @@ TimeZoneSetting tzTool;
 // --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
+  pinMode(PIN_ENCODER_PUSH, INPUT_PULLUP);                                      // DEFINE ENCODER BUTTON AS INPUT
+  if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
+    displayBuilder("  RESETING  ", toDisplayWords, false);
+    
+    alarmTool.begin();      
+    alarmTool.factoryReset();
+    
+    unsigned long startReset = millis();
+    while (millis() - startReset < 2000) {
+      renderDisplay(toDisplayWords); 
+    }
+  }
+  alarmTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
   pinMode(PIN_OE, OUTPUT);                                                      // DEFINE OE AS OUTPUT
   digitalWrite(PIN_OE, LOW);                                                    // SET OE LOW FOR MAX BRIGHTNESS
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   WiFisetup();                                                                  // CONNECT TO WIFI
-  pinMode(PIN_ENCODER_PUSH, INPUT_PULLUP);                                      // DEFINE ENCODER BUTTON AS INPUT
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
   
@@ -244,8 +257,10 @@ void loop() {
     // Timeout
     unsigned long timeoutDuration = (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
     if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
+      if (currentState == ALARM) {
+          alarmTool.save();
+      }
       currentState = CLOCK_CLEAN;
-
       alarmTool.reset();
     }
 
@@ -336,6 +351,9 @@ void loop() {
           menuTimeout = now;
         }
 
+        break;
+      }
+      case TIMER: {
         break;
       }
     }

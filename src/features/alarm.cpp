@@ -23,6 +23,14 @@ void Alarm::save() {
     prefs.putBytes("table", table, sizeof(table));
 }
 
+void Alarm::factoryReset() {
+    prefs.clear();
+
+             // ALARM #    HOUR    MINUTE    DAYS
+    table[0] = {1,         6,      30,       0b00111110};
+    table[1] = {2,         22,     0,        0b00111110};
+    table[2] = {3,         0,      0,        0b00000000};
+}
 
 
 void Alarm::onKnobTurn(int direction) {

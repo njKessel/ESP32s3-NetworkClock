@@ -2,6 +2,7 @@
 #define ALARM_H
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include "selection_util.h"
 
 struct alarmData {
@@ -20,6 +21,7 @@ class Alarm {
         int pageIndex;
 
         selectionUtility selector;
+        Preferences prefs;
     
     public:
         Alarm();
@@ -28,6 +30,10 @@ class Alarm {
         void onButtonPress();
 
         void reset();
+
+        void begin(); 
+        void save();  
+        void factoryReset(); 
 
         String getAlarmDisplay(bool hour24);
 
