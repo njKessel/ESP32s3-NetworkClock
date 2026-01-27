@@ -111,9 +111,9 @@ void Timer::reset() {
 }
 
 String Timer::getTimerDisplay() {
-    unsigned long millisT1 = ((table[0].timerMinute*60000) + (table[0].timerHours*3600000));
-    unsigned long millisT2 = ((table[1].timerMinute*60000) + (table[1].timerHours*3600000));
-    unsigned long millisT3 = ((table[2].timerMinute*60000) + (table[2].timerHours*3600000));
+    millisT1 = ((table[0].timerMinute*60000) + (table[0].timerHours*3600000));
+    millisT2 = ((table[1].timerMinute*60000) + (table[1].timerHours*3600000));
+    millisT3 = ((table[2].timerMinute*60000) + (table[2].timerHours*3600000));
 
     if (runningT1) {
         timeElapsedT1 += (millis() - startTimeT1);
@@ -144,7 +144,7 @@ String Timer::getTimerDisplay() {
             snprintf(timerIDDisp, sizeof(timerIDDisp), " ");
             snprintf(timerHourDisp,   sizeof(timerHourDisp),   "%02d", hoursRemainingT1);
             snprintf(timerMinuteDisp, sizeof(timerMinuteDisp), "%02d", minutesRemainingT1);
-            
+
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ", timerIDDisp, timerHourDisp, timerMinuteDisp);
         } else {
             snprintf(timerBuffer, sizeof(timerBuffer), "%s   %s:%s    ",
@@ -187,21 +187,21 @@ String Timer::getTimerDisplay() {
 
 bool Timer::shouldRing(int timerIndex) {
     if (timerIndex == 1) {
-        if (currentRemainingT1 == 0) {
+        if (timeElapsedT1 >= millisT1) {
             return true;
         } else {
             return false;
         }
 
     } else if (timerIndex == 2) {
-        if (currentRemainingT2 == 0) {
+        if (timeElapsedT2 >= millisT2) {
             return true;
         } else {
             return false;
         }
 
     } else if (timerIndex == 3) {
-        if (currentRemainingT3 == 0) {
+        if (timeElapsedT3 >= millisT3) {
             return true;
         } else {
             return false;
