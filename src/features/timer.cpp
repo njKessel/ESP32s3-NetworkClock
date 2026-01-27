@@ -270,6 +270,7 @@ bool Timer::shouldRing(int timerIndex) {
     unsigned long target = 0;
     unsigned long currentElapsed = 0;
 
+    if (latch) return false;
     if (timerIndex == 1) {
         target = ((unsigned long)table[0].timerMinute * 60000) + ((unsigned long)table[0].timerHours * 3600000);
         
@@ -288,6 +289,20 @@ bool Timer::shouldRing(int timerIndex) {
     }
 
     if (currentElapsed >= target && target > 0) {
+        latch = true;
+        if (timerIndex == 1) {
+            runningT1 = false;
+            pausedT1 = false;
+            timeElapsedT1 = 0;
+        } else if (timerIndex == 2) {
+            runningT2 = false;
+            pausedT2 = false;
+            timeElapsedT2 = 0;
+        } else if (timerIndex == 3) {
+            runningT3 = false;
+            pausedT3 = false;
+            timeElapsedT3 = 0;
+        }
         return true;
     }
     

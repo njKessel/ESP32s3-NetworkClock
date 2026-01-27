@@ -18,10 +18,12 @@ class Timer {
         unsigned long startTimeT1; unsigned long startTimeT2; unsigned long startTimeT3;
         unsigned long currentRemainingT1; unsigned long currentRemainingT2; unsigned long currentRemainingT3;
         unsigned long timeElapsedT1; unsigned long timeElapsedT2; unsigned long timeElapsedT3;
-
         unsigned long millisT1; unsigned long millisT2; unsigned long millisT3;
+
         bool runningT1; bool runningT2; bool runningT3;
         bool pausedT1; bool pausedT2; bool pausedT3;
+
+        bool latch;
         bool editMode;
 
         int currentTimer;
