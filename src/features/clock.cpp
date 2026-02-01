@@ -13,6 +13,9 @@ Clock::Clock() {
     focusMillis = 0;
     running = false;
     paused = false;
+
+    latch = false;
+    editMode = false;
 }
 
 void Clock::onButtonPress() {
@@ -26,8 +29,16 @@ void Clock::onButtonPress() {
 void Clock::onModButtonPress() {
     if (page == 0) {
         page = 1;
-        if (!running) {
+        if (!running && !paused) {
             running = true;
         }
+    } else if (page == 1) {
+        if (running) {
+            running = false;
+        }
+        if (paused) {
+            paused = false;
+        }
+        editMode = true;
     }
 }
