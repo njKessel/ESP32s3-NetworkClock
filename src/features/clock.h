@@ -24,7 +24,6 @@ class Clock {
     public:
         Clock();
 
-        void onKnobTurn(int direction);
         void onButtonPress();
         void onModButtonPress();
 
