@@ -115,7 +115,7 @@ void displayBuilder(const char* str, uint64_t* displayWords, bool navDelay) {
             }
         }
 
-        uint64_t segmentData = (uint64_t)(~segments & 0x1FFFF); 
+        uint64_t segmentData = (uint64_t)(segments & 0x1FFFF); 
         displayWords[dIdx] = anodeMap[dIdx] | segmentData;
     }
 }
