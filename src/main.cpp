@@ -46,6 +46,7 @@ constexpr int PIN_COPI  = 13;           // SPI SERIAL
 constexpr int PIN_LATCH = 40;           // SPI RCLK
 constexpr int PIN_OE    = 4;            // 74HC595 OUTPUT ENABLE (BRIGHTNESS VIA PWM)
 constexpr int PIN_SCK   = 12;           // SPI CLOCK
+constexpr int PIN_ALR   = 7;
 
 // --- ENCODER ---
 constexpr int PIN_ENCODER_PUSH = 8;     // PIN FOR PRESSING ENCODER
