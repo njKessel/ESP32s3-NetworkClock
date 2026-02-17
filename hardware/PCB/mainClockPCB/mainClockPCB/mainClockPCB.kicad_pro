@@ -451,7 +451,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "clockDisplay.kicad_pro",
+    "filename": "mainClockPCB.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -611,7 +611,7 @@
   },
   "sheets": [
     [
-      "96878019-2ca6-4356-b283-354cde723c0e",
+      "cd91d451-ff7b-4e2a-9e6d-1f78d74b6c34",
       "Root"
     ]
   ],

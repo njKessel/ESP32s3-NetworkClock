@@ -1,4 +1,4 @@
-26769099729186581
+26774411914649682
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -97286,12 +97286,26 @@ rotary encoder illuminated switch vertical
 9
 8
 SamacSys_Parts
+ESP32S3WROOM1N16R2
+41-SMD
+Integrated Circuit
+0
+49
+49
+SamacSys_Parts
 NE555DR
 D (R-PDSO-G8)
 Integrated Circuit
 0
 8
 8
+SamacSys_Parts
+PEC11R4320KS0012
+12.5mm x 13.4mm x 26.5mm
+Undefined or Miscellaneous
+0
+7
+7
 SamacSys_Parts
 SOIC127P600X175-8N
 D0008A
@@ -97303,6 +97317,13 @@ SamacSys_Parts
 TEPT5700
 T-1¾
 Phototransistor
+0
+2
+2
+SamacSys_Parts
+WP113IDT
+WP113IDT-1
+LED
 0
 2
 2
