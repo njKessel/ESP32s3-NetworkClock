@@ -11,7 +11,8 @@ WORK IN PROGRESS                ESP32-S3
 
 #include "secrets.h"          // WIFI CRED          
 #include "display_font.h"     // CHAR DISPLAY HANDLER
-#include "selection_util.h"
+#include "selection_util.h"   // FLASHING CURSOR
+#include "time_util.h"        // TIME INIT AND FORMAT
 
 #include "features/stopwatch.h"        // STOPWATCH CLASS
 #include "features/alarm.h"
@@ -130,14 +131,6 @@ void renderDisplay(uint64_t* currentBuffer) {
   }
 }
 
-// --- HELPERS ---
-String formatTime(const tm& ti, bool hour24) {
-  char buf[16];                                                                 // INIT DISPLAY CHAR BUFFER
-  if (!hour24) strftime(buf, sizeof(buf), " %I:%M:%S  %p ", &ti);               // WRITE TEXT TO DISPLAY TO CHAR BUFFER FORMATTED FOR 12HR
-  else strftime(buf, sizeof(buf), "   %H:%M:%S   ", &ti);                       // WRITE TEXT TO DISPLAY TO CHAR BUFFER FORMATTER FOR 24HR
-  return String(buf);                                                           // RETURN THE TEXT TO DISPLAY AS A STRING
-}
-
 // --- FUNCTIONS ---
 void displayBufferTime(bool showArrows) {
   if (lastEncState) {hour24 = true;} else {hour24 = false;};
@@ -145,7 +138,7 @@ void displayBufferTime(bool showArrows) {
   struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
 
   if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
+    displayBuilder((char*)timeUtil.formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
   }
 }
 
@@ -164,15 +157,12 @@ void WiFisetup(){
   while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
 }
 
-void initTime(const char* tz) {                                                 
-  configTzTime(tz, "pool.ntp.org");                                             // SYNC TIME WITH ntp
-}
-
 Stopwatch stopwatchTool;
 Alarm alarmTool;
 TimeZoneSetting tzTool;
 Notification notifTool;
 Timer timerTool;
+TimeUtil timeUtil;
 
 // --- SETUP ---
 void setup() {
@@ -203,7 +193,7 @@ void setup() {
   
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
   
-  initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
+  timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 }
 
 // --- LOOP ---
@@ -387,7 +377,7 @@ void loop() {
         displayBuilder((char*)tzTool.getDisplayString().c_str(), toDisplayWords, true);
 
         if (buttonPressed && (now - timeLastPressed > 250)) {
-          initTime(tzTool.getSelectedPosix());
+          timeUtil.initTime(tzTool.getSelectedPosix());
           currentState = CLOCK_CLEAN;
         }
         break;
