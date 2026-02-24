@@ -26,6 +26,7 @@ class Clock {
 
         void onButtonPress();
         void onModButtonPress();
+        void onHomeButtonPress();
 
         String getClockDisplay(bool hour24);
 
