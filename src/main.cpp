@@ -131,6 +131,8 @@ void renderDisplay(uint64_t* currentBuffer) {
   }
 }
 
+TimeUtil timeUtil;
+
 // --- FUNCTIONS ---
 void displayBufferTime(bool showArrows) {
   if (lastEncState) {hour24 = true;} else {hour24 = false;};
@@ -138,7 +140,7 @@ void displayBufferTime(bool showArrows) {
   struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
 
   if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)timeUtil.formatTime(timeinfo, hour24).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
+    displayBuilder((char*)(timeUtil.formatTime(timeinfo, hour24)).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
   }
 }
 
@@ -162,7 +164,6 @@ Alarm alarmTool;
 TimeZoneSetting tzTool;
 Notification notifTool;
 Timer timerTool;
-TimeUtil timeUtil;
 
 // --- SETUP ---
 void setup() {

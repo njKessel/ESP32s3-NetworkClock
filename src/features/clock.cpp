@@ -51,10 +51,10 @@ void Clock::onHomeButtonPress() {
     }
 }
 
-String Clock::getClockDisplay(bool hour24) {
-    if (page == 0) {
+// String Clock::getClockDisplay(bool hour24) {
+//     if (page == 0) {
         
-    } else if (page == 1) {
+//     } else if (page == 1) {
 
-    }
-}
+//     }
+// }
