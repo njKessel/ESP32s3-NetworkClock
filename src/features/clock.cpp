@@ -1,6 +1,9 @@
 #include "clock.h"
 #include <Arduino.h>
 #include <time.h>
+#include "time_util.h"
+
+TimeUtil timeUtil;
 
 Clock::Clock() {
     page = 0;
@@ -51,10 +54,10 @@ void Clock::onHomeButtonPress() {
     }
 }
 
-// String Clock::getClockDisplay(bool hour24) {
-//     if (page == 0) {
-        
-//     } else if (page == 1) {
+String Clock::getClockDisplay(bool hour24) {
+    if (page == 0) {
+       // timeUtil.formatTime(const tm& ti, hour24);
+    } else if (page == 1) {
 
-//     }
-// }
+   }
+}
