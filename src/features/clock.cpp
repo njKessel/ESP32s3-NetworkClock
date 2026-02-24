@@ -42,3 +42,9 @@ void Clock::onModButtonPress() {
         editMode = true;
     }
 }
+
+void Clock::onHomeButtonPress() {
+    if (page == 1) {
+        page == 0;
+    }
+}
