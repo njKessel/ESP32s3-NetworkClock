@@ -6,8 +6,9 @@
 
 class Clock {
     private:
-        bool nav;
+
         bool hour24;
+        bool nav;
         int page;
         // PAGE 0 = CLOCK
         // PAGE 1 = FOCUS TIMER
