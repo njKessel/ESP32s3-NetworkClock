@@ -31,6 +31,7 @@ enum SystemState {
   ALARM,
   MODE_TIMER,
   NOTIFICATION,
+  SETTINGS
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -329,7 +330,7 @@ void loop() {
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
         if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBufferTime(true);                                                                    // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -370,6 +371,12 @@ void loop() {
 
             encoderRawCount = 0;
             lastEncoderRead = 0;
+          }
+        } else if (menuIndex == 5) {
+          displayBuilder(" SETTINGS   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            timeLastPressed = now;
+            currentState = SETTINGS;
           }
         }
         break;
