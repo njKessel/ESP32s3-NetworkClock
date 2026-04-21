@@ -55,7 +55,7 @@ void Clock::onHomeButtonPress() {
     }
 }
 
-String Clock::getClockDisplay(bool hour24) {
+String Clock::getClockDisplay() {
     if (page == 0) {
         struct tm ti;
         

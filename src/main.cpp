@@ -19,6 +19,7 @@ WORK IN PROGRESS                ESP32-S3
 #include "features/timezone.h"
 #include "features/notification.h"
 #include "features/timer.h"
+#include "features/clock.h"
 
 #include <string>
 
@@ -165,6 +166,7 @@ Alarm alarmTool;
 TimeZoneSetting tzTool;
 Notification notifTool;
 Timer timerTool;
+Clock Clock;
 
 // --- SETUP ---
 void setup() {
@@ -321,7 +323,7 @@ void loop() {
     // State Machine
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
-        displayBufferTime(false);                                                                     // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
+        displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
@@ -333,7 +335,7 @@ void loop() {
         if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
-          displayBufferTime(true);                                                                    // GET toDisplayWords FOR TIME WITH NAV ARROWS
+          displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
           if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
             lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
             timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS

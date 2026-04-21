@@ -29,7 +29,7 @@ class Clock {
         void onModButtonPress();
         void onHomeButtonPress();
 
-        String getClockDisplay(bool hour24);
+        String getClockDisplay();
 
 };
 
