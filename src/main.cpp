@@ -133,6 +133,13 @@ void renderDisplay(uint64_t* currentBuffer) {
   }
 }
 
+
+void setDisplayBrightness(uint8_t brightnessLevel) {
+    uint8_t hardwareDuty = 255 - brightnessLevel; 
+
+    ledcWrite(0, hardwareDuty); 
+}
+
 TimeUtil timeUtil;
 
 // --- FUNCTIONS ---
@@ -187,8 +194,13 @@ void setup() {
   pinMode(PIN_HOME_BUTTON, INPUT_PULLUP);
   pinMode(PIN_MOD_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  pinMode(PIN_OE, OUTPUT);                                                      // DEFINE OE AS OUTPUT
-  digitalWrite(PIN_OE, LOW);                                                    // SET OE LOW FOR MAX BRIGHTNESS
+
+  const int oeChannel = 0; 
+  ledcSetup(oeChannel, 5000, 8);
+  ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
+
+  setDisplayBrightness(255);
+
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   WiFisetup();                                                                  // CONNECT TO WIFI
@@ -338,8 +350,8 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 5;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -368,15 +380,6 @@ void loop() {
             menuTimeout = now;
           }
         } else if (menuIndex == 3) {
-          displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
-          if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
-            currentState = TZ_SELECT;                                                                 // GO TO TIME ZONE SELECT MENU
-            
-            timeLastPressed = now;                                                                    // TIMESTAMP BUTTON PRESS
-            menuTimeout = now;                                                                        // TIMESTAMP TIMEOUT
-          }
-
-        } else if (menuIndex == 4) {
           displayBuilder(" ALARM     ", toDisplayWords, true);
           if (buttonPressed && (now - timeLastPressed > 250)) {
             timeLastPressed = now;
@@ -387,10 +390,11 @@ void loop() {
             encoderRawCount = 0;
             lastEncoderRead = 0;
           }
-        } else if (menuIndex == 5) {
+        } else if (menuIndex == 4) {
           displayBuilder(" SETTINGS   ", toDisplayWords, true);
           if (buttonDetect(buttonPressed, now)) {
             timeLastPressed = now;
+            menuIndex = 0;
             currentState = SETTINGS;
           }
         }
@@ -402,6 +406,7 @@ void loop() {
         if (buttonPressed && (now - timeLastPressed > 250)) {
           timeUtil.initTime(tzTool.getSelectedPosix());
           currentState = CLOCK_CLEAN;
+          timeLastPressed = now;
         }
         break;
         
@@ -481,12 +486,22 @@ void loop() {
             currentState = CLOCK_CLEAN;
         }
       }
+      case SETTINGS: {
+        if (menuIndex < 0) menuIndex = 0;
+        if (menuIndex > 0) menuIndex = 0;
+
+        if (menuIndex == 0) {
+          displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
+          if (buttonPressed && (now - timeLastPressed > 250)) {                                       // IF BUTTON IS PRESSED
+            currentState = TZ_SELECT;                                                                 // GO TO TIME ZONE SELECT MENU
+            
+            timeLastPressed = now;                                                                    // TIMESTAMP BUTTON PRESS
+            menuTimeout = now;                                                                        // TIMESTAMP TIMEOUT
+          }
+        }
+      }
     }
   }
   renderDisplay(toDisplayWords);                                                                      // RENDER CURRENT SCREEN STATE
 }
 
-
-
-// 2026-19-01 | 10:26 - 11:23
-// 2026-20-01 | 1:22 - 
