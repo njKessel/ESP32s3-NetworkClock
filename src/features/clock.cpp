@@ -2,8 +2,9 @@
 #include <Arduino.h>
 #include <time.h>
 #include "time_util.h"
+#include "timezone.h"
 
-TimeUtil timeUtil;
+extern TimeUtil timeUtil;
 
 Clock::Clock() {
     page = 0;
@@ -50,14 +51,44 @@ void Clock::onHomeButtonPress() {
     if (page == 1) {
         editMode = false;
 
-        page == 0;
+        page = 0;
     }
 }
 
 String Clock::getClockDisplay(bool hour24) {
     if (page == 0) {
-       // timeUtil.formatTime(const tm& ti, hour24);
+        struct tm ti;
+        
+        if (!getLocalTime(&ti)) {
+            return "Time Error"; 
+        }
+        String(clockBuffer) = timeUtil.formatTime(ti, hour24);
+        return String(clockBuffer);
     } else if (page == 1) {
+        unsigned long long currentDuration = focusElapsed;
 
+        if (running) {
+            currentDuration += (millis() - focusStart);
+        }
+
+        unsigned long totalSeconds = currentDuration / 1000;
+    
+        int SWhours   = totalSeconds / 3600;
+        int SWminutes = (totalSeconds / 60) % 60;
+        int SWseconds = totalSeconds % 60;
+        int SWmillis  = currentDuration % 1000;
+
+        char stopwatchBuffer[20]; 
+
+        snprintf(stopwatchBuffer, sizeof(stopwatchBuffer), 
+            " %02d:%02d:%02d:%03d", 
+            SWhours, 
+            SWminutes, 
+            SWseconds, 
+            SWmillis
+        );
+
+        return String(stopwatchBuffer); 
    }
+   return "";
 }
