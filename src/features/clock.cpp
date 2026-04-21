@@ -12,7 +12,7 @@ Clock::Clock() {
     nav = false;
     
     focusStart = 0;
-    focusRemain = 0;
+    focusRemain = 1500000;
     focusElapsed = 0;
     focusMillis = 0;
     running = false;
@@ -26,60 +26,67 @@ void Clock::onButtonPress() {
     if (page == 0) {
         hour24 = !hour24;
     } else if (page == 1) {
-        paused = !paused;
+        if (running) {
+            focusRemain -= (millis() - focusStart);
+            running = false;
+        } else {
+            if (focusRemain > 0) {
+                focusStart = millis();
+                running = true;
+            }
+        }
     }
 }
 
 void Clock::onModButtonPress() {
     if (page == 0) {
         page = 1;
-        if (!running && !paused) {
-            running = true;
-        }
     } else if (page == 1) {
-        if (running) {
-            running = false;
-        }
-        if (paused) {
-            paused = false;
-        }
-        editMode = true;
+        running = false;
+        focusRemain = 1500000; 
+        focusStart = 0;
+        editMode = false;
     }
 }
 
 void Clock::onHomeButtonPress() {
     if (page == 1) {
-        editMode = false;
-
-        page = 0;
+        editMode = false; 
+        page = 0;         
     }
 }
 
 String Clock::getClockDisplay() {
     if (page == 0) {
         struct tm ti;
-        
         if (!getLocalTime(&ti)) {
             return "Time Error"; 
         }
-        String(clockBuffer) = timeUtil.formatTime(ti, hour24);
-        return String(clockBuffer);
+        return timeUtil.formatTime(ti, hour24);
+        
     } else if (page == 1) {
-        unsigned long long currentDuration = focusElapsed;
+        long currentRemain = focusRemain;
 
         if (running) {
-            currentDuration += (millis() - focusStart);
+            long elapsed = millis() - focusStart;
+            currentRemain -= elapsed;
+            
+            if (currentRemain <= 0) {
+                currentRemain = 0;
+                running = false;
+                focusRemain = 0;
+                
+            }
         }
 
-        unsigned long totalSeconds = currentDuration / 1000;
+        unsigned long totalSeconds = currentRemain / 1000;
     
         int SWhours   = totalSeconds / 3600;
         int SWminutes = (totalSeconds / 60) % 60;
         int SWseconds = totalSeconds % 60;
-        int SWmillis  = currentDuration % 1000;
+        int SWmillis  = currentRemain % 1000;
 
         char stopwatchBuffer[20]; 
-
         snprintf(stopwatchBuffer, sizeof(stopwatchBuffer), 
             " %02d:%02d:%02d:%03d", 
             SWhours, 

@@ -295,6 +295,7 @@ void loop() {
       alarmTool.reset();
       timerTool.reset();
       stopwatchTool.reset();
+      Clock.onHomeButtonPress();
       currentState = CLOCK_CLEAN;
     }
 
@@ -326,19 +327,31 @@ void loop() {
         displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
+          Clock.onButtonPress();
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
         }
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            Clock.onModButtonPress();
+            menuTimeout = now;
+          }
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex < 0) menuIndex = 5;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
         if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
           if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
             lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
+            Clock.onButtonPress();
             timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
+          }
+          if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            Clock.onModButtonPress();
+            menuTimeout = now;
           }
         } else if (menuIndex == 1) {
           displayBuilder(" STOPWATCH  ", toDisplayWords, true);
