@@ -129,7 +129,9 @@ void spiWrite64(uint64_t data) {
 void renderDisplay(uint64_t* currentBuffer) {
   for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
     spiWrite64(currentBuffer[i]);                                               // WRITE THE DATA FOR EACH CHAR
-    delayMicroseconds(300);                                                     // MUX REFRESH RATE
+    delayMicroseconds(280);                                                     // MUX REFRESH RATE
+    spiWrite64(0);  
+    delayMicroseconds(20);
   }
 }
 
@@ -209,6 +211,7 @@ void setup() {
   
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
   
+  displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 }
 
