@@ -21,6 +21,8 @@ WORK IN PROGRESS                ESP32-S3
 #include "features/timer.h"
 #include "features/clock.h"
 
+#include "settings/brightness.h"
+
 #include <string>
 
 // --- STATE MACHINE ---
@@ -32,7 +34,8 @@ enum SystemState {
   ALARM,
   MODE_TIMER,
   NOTIFICATION,
-  SETTINGS
+  SETTINGS,
+  BRIGHTNESS
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -71,6 +74,9 @@ volatile int menuIndex = 0;             // INIT MENU INDEX
 volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
 bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
 int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
+
+uint8_t originalBrightness;
+uint8_t originalBrightnessIndex;
 
 SPISettings srSettings(10000000, MSBFIRST, SPI_MODE0); // SET SPI
 
@@ -129,7 +135,7 @@ void spiWrite64(uint64_t data) {
 void renderDisplay(uint64_t* currentBuffer) {
   for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
     spiWrite64(currentBuffer[i]);                                               // WRITE THE DATA FOR EACH CHAR
-    delayMicroseconds(280);                                                     // MUX REFRESH RATE
+    delayMicroseconds(180);                                                     // MUX REFRESH RATE
     spiWrite64(0);  
     delayMicroseconds(20);
   }
@@ -176,6 +182,7 @@ TimeZoneSetting tzTool;
 Notification notifTool;
 Timer timerTool;
 Clock Clock;
+Brightness brightnessTool;
 
 // --- SETUP ---
 void setup() {
@@ -201,7 +208,8 @@ void setup() {
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
 
-  setDisplayBrightness(255);
+  setDisplayBrightness(brightnessTool.getSelectedBrightness());
+  originalBrightness = brightnessTool.getSelectedBrightness();
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
@@ -243,7 +251,7 @@ void loop() {
         }
     } 
 
-    else if (currentState == NAV_MODE) {
+    else if (currentState == NAV_MODE || currentState == SETTINGS) {
         if (movement != lastEncoderRead) {
             if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
             lastEncoderRead = movement;
@@ -265,6 +273,16 @@ void loop() {
             int direction = (movement > lastEncoderRead) ? 1 : -1;
 
             tzTool.onKnobTurn(direction);
+
+            lastEncoderRead = movement;
+        }
+    }
+
+    else if (currentState == BRIGHTNESS) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+
+            brightnessTool.onKnobTurn(direction);
 
             lastEncoderRead = movement;
         }
@@ -297,7 +315,11 @@ void loop() {
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
     // Timeout
-    unsigned long timeoutDuration = (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
+    unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
+    if (currentState == ALARM) {timeoutDuration = 20000;}
+    else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
+    else if (currentState == SETTINGS) {timeoutDuration = 20000;}
+
     if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && currentState != NOTIFICATION && currentState != MODE_TIMER && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       if (currentState == ALARM) {
           alarmTool.save();
@@ -311,7 +333,14 @@ void loop() {
       timerTool.reset();
       stopwatchTool.reset();
       Clock.onHomeButtonPress();
-      currentState = CLOCK_CLEAN;
+      if (currentState == BRIGHTNESS) {
+        setDisplayBrightness(originalBrightness);
+        brightnessTool.cancel(originalBrightnessIndex);
+        currentState = CLOCK_CLEAN;
+      } else {
+        currentState = CLOCK_CLEAN;
+      }
+      
     }
 
     if (currentState != NOTIFICATION) {
@@ -413,7 +442,20 @@ void loop() {
         }
         break;
         
+      case BRIGHTNESS: {
+        displayBuilder((char*)brightnessTool.getDisplayString().c_str(), toDisplayWords, true);
+        setDisplayBrightness(brightnessTool.getSelectedBrightness());
+        
+        if (buttonDetect(buttonPressed, now)) {
+          setDisplayBrightness(brightnessTool.getSelectedBrightness());
+          currentState = SETTINGS;
 
+          timeLastPressed = now;
+          menuTimeout = now;
+        }
+
+        break;
+      }
       case STOPWATCH: { 
         displayBuilder((char*)stopwatchTool.getFormattedTime().c_str(), toDisplayWords, false);
 
@@ -479,7 +521,8 @@ void loop() {
           case 5:
             message = "TIMER 3";
             break;
-        };
+          
+          };
 
         displayBuilder((char*)notifTool.getNotificationDisplay(message).c_str(), toDisplayWords, false);
 
@@ -488,10 +531,11 @@ void loop() {
             timeLastPressed = now;
             currentState = CLOCK_CLEAN;
         }
+        break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 0;
-        if (menuIndex > 0) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 1;
+        if (menuIndex > 1) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -500,6 +544,18 @@ void loop() {
             
             timeLastPressed = now;                                                                    // TIMESTAMP BUTTON PRESS
             menuTimeout = now;                                                                        // TIMESTAMP TIMEOUT
+          }
+          
+        } else if (menuIndex == 1) {
+          displayBuilder(" BRIGHTNESS ", toDisplayWords, true);
+          
+          if (buttonDetect(buttonPressed, now)) {
+            originalBrightness = brightnessTool.getSelectedBrightness();
+            originalBrightnessIndex = brightnessTool.getSelectedIndex();
+            currentState = BRIGHTNESS;
+
+            timeLastPressed = now;
+            menuTimeout = now;
           }
         }
       }
