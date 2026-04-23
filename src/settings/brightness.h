@@ -48,8 +48,16 @@ class Brightness {
             return String(MENU_DATA[currentIndex].level);
         }
 
-        uint8_t getSelectedBrightness() {
-            return MENU_DATA[currentIndex].value;
+        uint8_t getSelectedBrightness(uint16_t lightSensorData) {
+            if (currentIndex == 8) {
+                int mappedValue = map(lightSensorData, 4095, 500, 20, 255);
+                
+                mappedValue = constrain(mappedValue, 10, 255);
+                
+                return (uint8_t)mappedValue;
+            } else {
+                return MENU_DATA[currentIndex].value;
+            }
         }
 
         uint8_t getSelectedIndex() {

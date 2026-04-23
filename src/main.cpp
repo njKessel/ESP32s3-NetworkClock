@@ -53,7 +53,7 @@ constexpr int PIN_LATCH = 40;           // SPI RCLK
 constexpr int PIN_OE    = 4;            // 74HC595 OUTPUT ENABLE (BRIGHTNESS VIA PWM)
 constexpr int PIN_SCK   = 12;           // SPI CLOCK
 
-constexpr int PIN_LIGHT = 7;
+constexpr int PIN_LIGHT = 7;            // LIGHT SENSOR
 constexpr int PIN_MFP   = 41;
 constexpr int PIN_SCL   = 39;
 constexpr int PIN_SDA   = 38;
@@ -203,13 +203,14 @@ void setup() {
   pinMode(PIN_HOME_BUTTON, INPUT_PULLUP);
   pinMode(PIN_MOD_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
+  pinMode(PIN_LIGHT, ANALOG);
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
 
-  setDisplayBrightness(brightnessTool.getSelectedBrightness());
-  originalBrightness = brightnessTool.getSelectedBrightness();
+  setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
+  originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
@@ -226,6 +227,8 @@ void setup() {
 // --- LOOP ---
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
+
+  uint16_t lightSensorData = analogRead(PIN_LIGHT);
 
   bool hasMoved = encoderMoved;
 
@@ -314,6 +317,12 @@ void loop() {
   if (now - lastLogic > logicRefreshSpeed) {                                                                         // IF ITS BEEN 50ms
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
+    Serial.print("Raw Light Value: ");
+    Serial.println(analogRead(PIN_LIGHT));
+    if (brightnessTool.getSelectedIndex() == 8) {
+      setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
+    }
+
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
     if (currentState == ALARM) {timeoutDuration = 20000;}
@@ -369,6 +378,9 @@ void loop() {
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
         displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
+
+
+
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
           Clock.onButtonPress();
@@ -444,10 +456,10 @@ void loop() {
         
       case BRIGHTNESS: {
         displayBuilder((char*)brightnessTool.getDisplayString().c_str(), toDisplayWords, true);
-        setDisplayBrightness(brightnessTool.getSelectedBrightness());
+        setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
         
         if (buttonDetect(buttonPressed, now)) {
-          setDisplayBrightness(brightnessTool.getSelectedBrightness());
+          setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
           currentState = SETTINGS;
 
           timeLastPressed = now;
@@ -550,7 +562,7 @@ void loop() {
           displayBuilder(" BRIGHTNESS ", toDisplayWords, true);
           
           if (buttonDetect(buttonPressed, now)) {
-            originalBrightness = brightnessTool.getSelectedBrightness();
+            originalBrightness = brightnessTool.getSelectedBrightness(lightSensorData);
             originalBrightnessIndex = brightnessTool.getSelectedIndex();
             currentState = BRIGHTNESS;
 
