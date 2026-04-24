@@ -53,4 +53,4 @@ Moving from basic time-telling to a multiplexed display with a menu system intro
 
 License
 
-MIT License — see LICENSE for details.
+MIT License | see LICENSE for details.
