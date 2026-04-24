@@ -1,4 +1,8 @@
 // EXAMPLE SECRETS
-#pragma
+#pragma once
 #define WIFI_SSID "yourSSID"
 #define WIFI_PASSWORD "yourPASSWORD"
+
+#define OWM_API_KEY "00000000000000000000000000000000"
+#define OWM_ZIP "45202"
+#define OWM_COUTNRY "US"
