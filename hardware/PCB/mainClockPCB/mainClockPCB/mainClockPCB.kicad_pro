@@ -823,16 +823,16 @@
       {
         "filename": "mainClockPCB.kicad_sch",
         "name": "mainClockPCB",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "cd91d451-ff7b-4e2a-9e6d-1f78d74b6c34"
       }
     ],
-    "used_designators": "",
+    "used_designators": "#PWR31,J7",
     "variants": []
   },
   "sheets": [
     [
       "cd91d451-ff7b-4e2a-9e6d-1f78d74b6c34",
-      "Root"
+      "mainClockPCB"
     ]
   ],
   "text_variables": {},
