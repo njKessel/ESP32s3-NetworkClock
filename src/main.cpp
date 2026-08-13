@@ -78,7 +78,7 @@ int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
 uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
 
-SPISettings srSettings(10000000, MSBFIRST, SPI_MODE0); // SET SPI
+SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
 
 // --- TIMER POLLING ---
 static const int8_t encoder_states[] = {
@@ -172,7 +172,7 @@ void WiFisetup(){
   while (WiFi.status() != WL_CONNECTED) {                                       // WHILE NOT CONNECTED
     for(int i = 0; i < 50; i++) renderDisplay(toDisplayWords);                  // DISPLAY CONNECTING MESSAGE
   }
-  unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MESSAGE
+  unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MINIMUM MESSAGE
   while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
 }
 
