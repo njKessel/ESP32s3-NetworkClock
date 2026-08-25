@@ -49,13 +49,13 @@ int activeNotification = -1;
 
 // --- PIN DEFINITIONS ---
 constexpr int PIN_COPI  = 13;           // SPI SERIAL
-constexpr int PIN_LATCH = 40;           // SPI RCLK
+constexpr int PIN_LATCH = 6;            // SPI RCLK
 constexpr int PIN_OE    = 4;            // 74HC595 OUTPUT ENABLE (BRIGHTNESS VIA PWM)
 constexpr int PIN_SCK   = 12;           // SPI CLOCK
 
 constexpr int PIN_LIGHT = 7;            // LIGHT SENSOR
-constexpr int PIN_MFP   = 41;
-constexpr int PIN_SCL   = 39;
+constexpr int PIN_MFP   = 8;
+constexpr int PIN_SCL   = 5;
 constexpr int PIN_SDA   = 38;
 
 // --- ENCODER ---
@@ -169,9 +169,13 @@ bool buttonDetect(bool buttonPressed, unsigned long now) {
 void WiFisetup(){                                                         
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);                                         // BEGIN CONNECTING TO WIFI USING GIVEN SSID AND PASSWORD
   displayBuilder(" CONNECTING ", toDisplayWords, false);                        // BUILD toDisplayWords TO SHOW CONNECTING MESSAGE
+  Serial.println("Attempting to connect to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {                                       // WHILE NOT CONNECTED
+    Serial.println("Still connecting...");
     for(int i = 0; i < 50; i++) renderDisplay(toDisplayWords);                  // DISPLAY CONNECTING MESSAGE
   }
+  Serial.println("WiFi Connected successfully!");
+  
   unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MINIMUM MESSAGE
   while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
 }
@@ -187,6 +191,14 @@ Brightness brightnessTool;
 // --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
+  
+  uint32_t start = millis();
+  while (!Serial && (millis() - start < 3000)) {
+    delay(10); 
+  }
+  
+  Serial.println("ESP32 Booted");
+
   pinMode(PIN_ENCODER_PUSH, INPUT_PULLUP);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
     displayBuilder("  RESETING  ", toDisplayWords, false);
