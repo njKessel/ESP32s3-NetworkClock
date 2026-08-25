@@ -59,13 +59,14 @@ constexpr int PIN_SCL   = 5;
 constexpr int PIN_SDA   = 38;
 
 // --- ENCODER ---
-constexpr int PIN_ENCODER_PUSH = 8;     // PIN FOR PRESSING ENCODER
+constexpr int PIN_ENCODER_PUSH = 15;     // PIN FOR PRESSING ENCODER
 constexpr int PIN_ENCODER_A = 9;        // PIN A ON ENCODER
 constexpr int PIN_ENCODER_B = 10;       // PIN B ON ENCODER
 
 // --- BUTTONS ---
-constexpr int PIN_HOME_BUTTON = 5;
-constexpr int PIN_MOD_BUTTON  = 6;
+constexpr int PIN_COPI_BUTTON = 14;
+constexpr int PIN_LATCH_BUTTON = 1;
+constexpr int PIN_SCK_BUTTON = 11;
 
 volatile long encoderRawCount = 0;      // INIT FOR TRACKING PULSES FROM ENCODER
 long lastEncoderRead = 0;               // INIT TIMER SINCE LAST ENCODER READ
@@ -79,6 +80,7 @@ uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
 
 SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
+SPISettings btSettings(4000000, MSBFIRST, SPI_MODE0); // BUTTON SPI
 
 // --- TIMER POLLING ---
 static const int8_t encoder_states[] = {
@@ -131,6 +133,20 @@ void spiWrite64(uint64_t data) {
   latchPulse();                                                                 // LATCH SHIFT REGISTERS
 }
 
+// Recieving data
+uint8_t pullButtonStates() {
+  SPI.beginTransaction(btSettings);
+  uint8_t buttonStates = SPI.transfer(0);
+  SPI.endTransaction();
+  return buttonStates; 
+}
+
+bool checkButton(uint8_t buttonStates, int buttonID) {
+  int selectedState = buttonStates & buttonID;
+  if (selectedState == buttonID) {return true;}
+  else {return false;};
+}
+
 // --- RENDER FUNCTION ---
 void renderDisplay(uint64_t* currentBuffer) {
   for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
@@ -169,12 +185,12 @@ bool buttonDetect(bool buttonPressed, unsigned long now) {
 void WiFisetup(){                                                         
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);                                         // BEGIN CONNECTING TO WIFI USING GIVEN SSID AND PASSWORD
   displayBuilder(" CONNECTING ", toDisplayWords, false);                        // BUILD toDisplayWords TO SHOW CONNECTING MESSAGE
-  Serial.println("Attempting to connect to WiFi...");
+  Serial.println("30 WIFIC: Starting WiFi Connection");
   while (WiFi.status() != WL_CONNECTED) {                                       // WHILE NOT CONNECTED
-    Serial.println("Still connecting...");
+    Serial.println("30 WIFIC: Connection in Progress");
     for(int i = 0; i < 50; i++) renderDisplay(toDisplayWords);                  // DISPLAY CONNECTING MESSAGE
   }
-  Serial.println("WiFi Connected successfully!");
+  Serial.println("30 WIFIC: WiFi Connected");
   
   unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MINIMUM MESSAGE
   while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
@@ -197,11 +213,12 @@ void setup() {
     delay(10); 
   }
   
-  Serial.println("ESP32 Booted");
+  Serial.println("00 SETUP: Serial Monitor Online");
 
-  pinMode(PIN_ENCODER_PUSH, INPUT_PULLUP);                                      // DEFINE ENCODER BUTTON AS INPUT
+  pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
-    displayBuilder("  RESETING  ", toDisplayWords, false);
+    Serial.println("Resetting ");
+    displayBuilder(" RESETTING  ", toDisplayWords, false);
     
     alarmTool.begin();      
     alarmTool.factoryReset();
@@ -212,28 +229,36 @@ void setup() {
     }
   }
   alarmTool.begin();
-  pinMode(PIN_HOME_BUTTON, INPUT_PULLUP);
-  pinMode(PIN_MOD_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
+  Serial.println("00 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
+  Serial.println("00 SETUP: Light sense pin.");
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
+  Serial.println("00 SETUP: Display Output Enable Pin (Brightness).");
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
+  Serial.println("10 CALIB: Brightness initial callibration.");
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
+  Serial.println("00 SETUP: Display SPI begin.");
+  SPI.begin(PIN_SCK_BUTTON, -1, PIN_COPI_BUTTON, PIN_LATCH_BUTTON);
+  Serial.println("00 SETUP: Button SPI begin.");
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   WiFisetup();                                                                  // CONNECT TO WIFI
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  
+  Serial.println("00 SETUP: Encoder rotation pins.");
+
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
+  Serial.println("00 SETUP: Encoder SW Debounce");
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
+  Serial.println("00 SETUP: Time set");
 }
 
 // --- LOOP ---
@@ -244,11 +269,22 @@ void loop() {
 
   bool hasMoved = encoderMoved;
 
-  if (hasMoved) encoderMoved = false;
-
+  if (hasMoved) {
+    encoderMoved = false;
+    Serial.println("20 INPUT: Encoder Rotation Detect");
+  }
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
-  bool homeButtonPressed = (digitalRead(PIN_HOME_BUTTON) == LOW);
-  bool modButtonPressed = (digitalRead(PIN_MOD_BUTTON) == LOW);
+  if (buttonPressed) {
+    // Serial.println("20 INPUT: Encoder Button Detect");
+  }
+  bool homeButtonPressed = (checkButton(pullButtonStates(), 0) == LOW);
+  if (homeButtonPressed){
+    Serial.println("20 INPUT: Home Button Detect");
+  }
+  bool modButtonPressed = (checkButton(pullButtonStates(), 1) == HIGH);
+  if (modButtonPressed) {
+    Serial.println("20 INPUT: Modifier Button Detect");
+  }
 
   // 1. INPUTS
   if (hasMoved) {
@@ -329,8 +365,8 @@ void loop() {
   if (now - lastLogic > logicRefreshSpeed) {                                                                         // IF ITS BEEN 50ms
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
-    Serial.print("Raw Light Value: ");
-    Serial.println(analogRead(PIN_LIGHT));
+    // Serial.print("Raw Light Value: ");
+    // Serial.println(analogRead(PIN_LIGHT));
     if (brightnessTool.getSelectedIndex() == 8) {
       setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
     }
@@ -368,21 +404,27 @@ void loop() {
       if (alarmTool.shouldRing(0)) {
         activeNotification = 0;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Alarm Notification 0");
       } else if (alarmTool.shouldRing(1)) {
         activeNotification = 1;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Alarm Notification 1");
       } else if (alarmTool.shouldRing(2)) {
         activeNotification = 2;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Alarm Notification 2");
       } else if (timerTool.shouldRing(1)) {
         activeNotification = 3;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Timer Notification 1");
       } else if (timerTool.shouldRing(2)) {
         activeNotification = 4;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Timer Notification 2");
       } else if (timerTool.shouldRing(3)) {
         activeNotification = 5;
         currentState = NOTIFICATION;
+        Serial.println("80 NOTIF: Timer Notification 3");
       }
     }
 
