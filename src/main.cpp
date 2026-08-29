@@ -76,6 +76,9 @@ volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
 bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
 int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
 
+bool homeButtonPressed = false;
+bool modButtonPressed = false;
+
 uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
 
@@ -258,6 +261,7 @@ void setup() {
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
+
   Serial.println("00 SETUP: Time set");
 }
 
@@ -271,10 +275,9 @@ void loop() {
 
   if (hasMoved) {
     encoderMoved = false;
-    Serial.println("20 INPUT: Encoder Rotation Detect");
   }
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
-  if (buttonPressed) {
+  if (buttonDetect(buttonPressed, now)) {
     // Serial.println("20 INPUT: Encoder Button Detect");
   }
   bool homeButtonPressed = (checkButton(pullButtonStates(), 0) == LOW);
