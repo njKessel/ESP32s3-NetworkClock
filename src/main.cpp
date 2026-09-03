@@ -39,6 +39,7 @@ enum SystemState {
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
+SystemState lastState = currentState;
 unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
 
 // --- GLOBALS ---
@@ -57,6 +58,8 @@ constexpr int PIN_LIGHT = 7;            // LIGHT SENSOR
 constexpr int PIN_MFP   = 8;
 constexpr int PIN_SCL   = 5;
 constexpr int PIN_SDA   = 38;
+
+int WiFiLight = 0;
 
 // --- ENCODER ---
 constexpr int PIN_ENCODER_PUSH = 15;     // PIN FOR PRESSING ENCODER
@@ -82,8 +85,10 @@ bool modButtonPressed = false;
 uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
 
+SPIClass buttonSPI(HSPI);               // second SPI instance for the buttons
+
 SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
-SPISettings btSettings(4000000, MSBFIRST, SPI_MODE0); // BUTTON SPI
+SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2); // BUTTON SPI
 
 // --- TIMER POLLING ---
 static const int8_t encoder_states[] = {
@@ -127,6 +132,8 @@ static void latchPulse() {
 void spiWrite64(uint64_t data) {  
   uint32_t high = (uint32_t)(data >> 32);                                       // BREAK HALF OF THE 64 BITS OFF
   uint32_t low = (uint32_t)(data & 0xFFFFFFFF);                                 // BREAK HALF OF THE 64 BITS OFF
+
+
   digitalWrite(PIN_LATCH, LOW);                                                 // DO NOT DISPLAY DATA
   SPI.beginTransaction(srSettings);                                             // OPEN SPI TRANSMISSION
   SPI.transfer32(high);                                                         // SEND MSB PART
@@ -138,16 +145,19 @@ void spiWrite64(uint64_t data) {
 
 // Recieving data
 uint8_t pullButtonStates() {
-  SPI.beginTransaction(btSettings);
-  uint8_t buttonStates = SPI.transfer(0);
-  SPI.endTransaction();
+  digitalWrite(PIN_LATCH_BUTTON, LOW);
+  delayMicroseconds(1);
+  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
+  delayMicroseconds(1);
+  
+  buttonSPI.beginTransaction(btSettings);
+  uint8_t buttonStates = buttonSPI.transfer(0);
+  buttonSPI.endTransaction();
   return buttonStates; 
 }
 
-bool checkButton(uint8_t buttonStates, int buttonID) {
-  int selectedState = buttonStates & buttonID;
-  if (selectedState == buttonID) {return true;}
-  else {return false;};
+bool checkButton(uint8_t buttonStates, int bitIndex) {
+  return (buttonStates & (1 << bitIndex)) != 0;
 }
 
 // --- RENDER FUNCTION ---
@@ -195,6 +205,8 @@ void WiFisetup(){
   }
   Serial.println("30 WIFIC: WiFi Connected");
   
+  WiFiLight = 1;
+
   unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MINIMUM MESSAGE
   while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
 }
@@ -248,8 +260,12 @@ void setup() {
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   Serial.println("00 SETUP: Display SPI begin.");
-  SPI.begin(PIN_SCK_BUTTON, -1, PIN_COPI_BUTTON, PIN_LATCH_BUTTON);
+  pinMode(PIN_LATCH_BUTTON, OUTPUT);
+  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
+
+  buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
   Serial.println("00 SETUP: Button SPI begin.");
+
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   WiFisetup();                                                                  // CONNECT TO WIFI
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
@@ -269,6 +285,12 @@ void setup() {
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
 
+  if (lastState != currentState) {
+    Serial.print("00 STATE: State change to ");
+    Serial.println(currentState);
+  }
+  lastState = currentState;
+
   uint16_t lightSensorData = analogRead(PIN_LIGHT);
 
   bool hasMoved = encoderMoved;
@@ -278,16 +300,22 @@ void loop() {
   }
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
   if (buttonDetect(buttonPressed, now)) {
-    // Serial.println("20 INPUT: Encoder Button Detect");
+    Serial.println("20 INPUT: Encoder Button Detect");
   }
-  bool homeButtonPressed = (checkButton(pullButtonStates(), 0) == LOW);
-  if (homeButtonPressed){
-    Serial.println("20 INPUT: Home Button Detect");
-  }
-  bool modButtonPressed = (checkButton(pullButtonStates(), 1) == HIGH);
-  if (modButtonPressed) {
-    Serial.println("20 INPUT: Modifier Button Detect");
-  }
+  uint8_t currentButtonStates = pullButtonStates();
+
+  bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
+  bool modButtonPressed  = (checkButton(currentButtonStates, 1) == false);
+
+  // bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
+  // if (homeButtonPressed){
+  //   Serial.println("20 INPUT: Home Button Detect");
+  // }
+  
+  // bool modButtonPressed = (checkButton(currentButtonStates, 1) == false);
+  // if (modButtonPressed) {
+  //   Serial.println("20 INPUT: Modifier Button Detect");
+  // }
 
   // 1. INPUTS
   if (hasMoved) {
@@ -389,6 +417,8 @@ void loop() {
     }
 
     if (buttonDetect(homeButtonPressed, now)) {
+      Serial.println("20 INPUT: Home Button Detect");
+      timeLastPressed = now;
       alarmTool.reset();
       timerTool.reset();
       stopwatchTool.reset();

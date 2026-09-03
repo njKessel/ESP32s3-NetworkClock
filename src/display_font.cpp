@@ -79,7 +79,6 @@ uint32_t getSegmentPattern(char c, bool DP) {
     }
 }
 
-// Create an array for easy access to your enum bits
 const uint64_t anodeMap[12] = {
   ANODE0, ANODE1, ANODE2, ANODE3, ANODE4, ANODE5, 
   ANODE6, ANODE7, ANODE8, ANODE9, ANODE10, ANODE11

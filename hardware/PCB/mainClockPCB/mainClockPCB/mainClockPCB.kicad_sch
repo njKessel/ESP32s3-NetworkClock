@@ -8601,16 +8601,16 @@
 		(uuid "522b25f8-5eff-4f0b-86f2-07e9c2f397bf")
 	)
 	(no_connect
+		(at 119.38 148.59)
+		(uuid "63fe85f3-9072-4e00-9173-74cfad2ce806")
+	)
+	(no_connect
 		(at 135.89 44.45)
 		(uuid "8606ebd2-562d-4349-b63e-388d5d5035c3")
 	)
 	(no_connect
 		(at 217.17 160.02)
 		(uuid "979f8f45-f8a8-4c10-b4b8-8274e3413a94")
-	)
-	(no_connect
-		(at 93.98 148.59)
-		(uuid "ad796e1c-88b6-4ada-84a2-b52ac2d70114")
 	)
 	(no_connect
 		(at 119.38 168.91)
@@ -9394,6 +9394,16 @@
 	)
 	(wire
 		(pts
+			(xy 93.98 148.59) (xy 90.17 148.59)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "31def347-9169-4f0b-9c7a-4e0be581c040")
+	)
+	(wire
+		(pts
 			(xy 77.47 71.12) (xy 77.47 74.93)
 		)
 		(stroke
@@ -10134,6 +10144,16 @@
 	)
 	(wire
 		(pts
+			(xy 90.17 148.59) (xy 90.17 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "66901eaf-fb1b-42d6-8093-bf14ef011003")
+	)
+	(wire
+		(pts
 			(xy 171.45 76.2) (xy 173.99 76.2)
 		)
 		(stroke
@@ -10531,16 +10551,6 @@
 			(type default)
 		)
 		(uuid "8a30bf5a-bfce-4993-bbfe-865c3c4c77f5")
-	)
-	(wire
-		(pts
-			(xy 119.38 148.59) (xy 139.7 148.59)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8afa2d0b-9dd3-4e72-a275-7ff4aacb9939")
 	)
 	(wire
 		(pts
@@ -12522,6 +12532,30 @@
 			)
 		)
 	)
+	(global_label "BUTTON_SERIAL"
+		(shape input)
+		(at 90.17 149.86 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 0.762 0.762)
+			)
+			(justify right)
+		)
+		(uuid "0c1a6e7c-f797-484f-bacc-7417547b8f12")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 160.3601 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+	)
 	(global_label "JTAG_MTMS"
 		(shape input)
 		(at 163.83 176.53 0)
@@ -14047,30 +14081,6 @@
 		(uuid "a150eb52-517f-494e-91f7-f0d4b0dd4725")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 35.1743 35.56 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-	)
-	(global_label "BUTTON_SERIAL"
-		(shape input)
-		(at 139.7 148.59 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 0.762 0.762)
-			)
-			(justify left)
-		)
-		(uuid "ab0ef6dd-6a17-47a0-bdd9-1c56f35434f9")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 150.2001 148.59 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18984,7 +18994,7 @@
 				)
 			)
 		)
-		(property "Value" "SPX1117M3-L_TR"
+		(property "Value" "SPX1117M3-L-3-3/TR"
 			(at 62.23 97.79 0)
 			(show_name no)
 			(do_not_autoplace no)
