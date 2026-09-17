@@ -123,6 +123,10 @@ enum anodeBit : uint64_t {
   ANODE9 = 1ull << 33,
   ANODE10 = 1ull << 34,
   ANODE11 = 1ull << 35, // 74HC595 U5 pin ANODE12 on 12C-LTP-587HR_rev1
+
+  STATUS_LED1 = 1ull << 37;
+  STATUS_LED2 = 1ull << 38;
+  STATUS_LED3 = 1ull << 39;
 };
 
 uint32_t getSegmentPattern(char c, bool DP) {
