@@ -22,7 +22,38 @@ void initFontTable() {
 
     fontTable['<'] =                                                                                 SEG_N |         SEG_R;
     fontTable['>'] =                                                                 SEG_K |                                         SEG_T;
-    fontTable['#']= SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H | SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U;
+    fontTable['#'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H | SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U;
+
+    fontTable[' '] = 0;
+    fontTable['!'] =                 SEG_C | SEG_D;
+    fontTable['"'] =                 SEG_C |                                 SEG_H;
+    fontTable['$'] = SEG_A | SEG_B |         SEG_D | SEG_E | SEG_F |         SEG_H |         SEG_M |         SEG_P |         SEG_S |         SEG_U;
+    fontTable['%'] =                         SEG_D |                 SEG_G |         SEG_K |                 SEG_P |                 SEG_T;
+    fontTable['&'] = SEG_A |                 SEG_D | SEG_E | SEG_F |         SEG_H | SEG_K |                 SEG_P |                 SEG_T;
+    fontTable['\'']=                 SEG_C;
+    fontTable['('] =                                                                                 SEG_N |                 SEG_R;
+    fontTable[')'] =                                                                 SEG_K |                                         SEG_T;
+    fontTable['*'] =                                                                 SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U;
+    fontTable['+'] =                                                                         SEG_M |         SEG_P |         SEG_S |         SEG_U;
+    fontTable[','] =                                                                                                                 SEG_T;
+    fontTable['-'] =                                                                                         SEG_P |                         SEG_U;
+    fontTable['.'] =                                 SEG_E;
+    fontTable['/'] =                                                                                 SEG_N |                         SEG_T;
+    fontTable[':'] =                 SEG_C |         SEG_E;
+    fontTable[';'] =                 SEG_C |                                                                                         SEG_T;
+    fontTable['='] =                                 SEG_E | SEG_F |                                         SEG_P |                         SEG_U;
+    fontTable['?'] = SEG_A | SEG_B | SEG_C |                                                                         SEG_S |                 SEG_U;
+    fontTable['@'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H |                         SEG_P;
+    fontTable['['] = SEG_A |                                 SEG_F | SEG_G | SEG_H;
+    fontTable['\\']=                                                                 SEG_K |                 SEG_R;
+    fontTable[']'] =         SEG_B | SEG_C | SEG_D | SEG_E;
+    fontTable['^'] =                                                                                                 SEG_R |         SEG_T;
+    fontTable['_'] =                                 SEG_E | SEG_F;
+    fontTable['`'] =                                                                 SEG_K;
+    fontTable['{'] =                                                 SEG_G | SEG_H |                         SEG_P;
+    fontTable['|'] =                                                                         SEG_M |                         SEG_S;
+    fontTable['}'] =                 SEG_C | SEG_D |                                                                                 SEG_U;
+    fontTable['~'] = SEG_A |                                                                                                         SEG_U;
 
     fontTable['A'] = SEG_A | SEG_B | SEG_C | SEG_D |                 SEG_G | SEG_H |                         SEG_P |                         SEG_U;
     fontTable['B'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F |                         SEG_M |         SEG_P |         SEG_S;
@@ -50,6 +81,33 @@ void initFontTable() {
     fontTable['X'] =                                                                 SEG_K |         SEG_N |         SEG_R |         SEG_T;
     fontTable['Y'] =                                                                 SEG_K |         SEG_N |                 SEG_S;
     fontTable['Z'] = SEG_A | SEG_B |                 SEG_E | SEG_F |                                 SEG_N |                         SEG_T;
+
+    fontTable['a'] = SEG_A | SEG_B | SEG_C | SEG_D |                 SEG_G | SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['b'] =                         SEG_D | SEG_E | SEG_F | SEG_G | SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['c'] =                                 SEG_E | SEG_F | SEG_G |                                 SEG_P |                         SEG_U;
+    fontTable['d'] =                 SEG_C | SEG_D | SEG_E | SEG_F | SEG_G |                                 SEG_P |                         SEG_U;
+    fontTable['e'] = SEG_A | SEG_B | SEG_C |         SEG_E | SEG_F | SEG_G |                                 SEG_P |                         SEG_U;
+    fontTable['f'] = SEG_A | SEG_B |                                 SEG_G | SEG_H |                         SEG_P;
+    fontTable['g'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F |         SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['h'] =                         SEG_D |                 SEG_G | SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['i'] =                                                                                                                         SEG_S;
+    fontTable['j'] =                         SEG_D | SEG_E | SEG_F;
+    fontTable['k'] =                                                 SEG_G | SEG_H |                 SEG_N |         SEG_R |                 SEG_U;
+    fontTable['l'] =                                                                         SEG_M |                         SEG_S;
+    fontTable['m'] =                         SEG_D |                 SEG_G |                                 SEG_P |         SEG_S |         SEG_U;
+    fontTable['n'] =                         SEG_D |                 SEG_G |                                 SEG_P |                         SEG_U;
+    fontTable['o'] =                         SEG_D | SEG_E | SEG_F | SEG_G |                                 SEG_P |                         SEG_U;
+    fontTable['p'] = SEG_A | SEG_B | SEG_C |                         SEG_G | SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['q'] = SEG_A | SEG_B | SEG_C | SEG_D |                         SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['r'] =                                                 SEG_G |                                 SEG_P;
+    fontTable['s'] = SEG_A | SEG_B |         SEG_D | SEG_E | SEG_F |         SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['t'] =                                 SEG_E | SEG_F | SEG_G | SEG_H |                         SEG_P |                         SEG_U;
+    fontTable['u'] =                         SEG_D | SEG_E | SEG_F | SEG_G;
+    fontTable['v'] =                                                                                                 SEG_R |         SEG_T;
+    fontTable['w'] =                         SEG_D |                 SEG_G |                                         SEG_R |         SEG_T;
+    fontTable['x'] =                                                                 SEG_K |         SEG_N |         SEG_R |         SEG_T;
+    fontTable['y'] =                                                                 SEG_K |         SEG_N |                 SEG_S;
+    fontTable['z'] = SEG_A | SEG_B |                 SEG_E | SEG_F |                                 SEG_N |                         SEG_T;
 }
 
 enum anodeBit : uint64_t {
