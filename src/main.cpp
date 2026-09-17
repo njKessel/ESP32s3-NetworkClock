@@ -81,6 +81,11 @@ int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
 
 bool homeButtonPressed = false;
 bool modButtonPressed = false;
+bool aButtonPressed = false;
+bool bButtonPressed = false;
+bool cButtonPressed = false;
+bool dButtonPressed = false;
+bool eButtonPressed = false;
 
 uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
@@ -139,7 +144,7 @@ void spiWrite64(uint64_t data) {
   SPI.transfer32(high);                                                         // SEND MSB PART
   SPI.transfer32(low);                                                          // SEND LSB PART
   SPI.endTransaction();                                                         // CLOSE SPI TRANSMISSION
-  asm volatile("nop;nop;nop;nop");                                              // SHORT DELAY 
+  asm volatile("nop;nop;nop;nop");                                              // SHORT DELAY USING ASM NO-OPERATION
   latchPulse();                                                                 // LATCH SHIFT REGISTERS
 }
 
@@ -306,16 +311,11 @@ void loop() {
 
   bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
   bool modButtonPressed  = (checkButton(currentButtonStates, 1) == false);
-
-  // bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
-  // if (homeButtonPressed){
-  //   Serial.println("20 INPUT: Home Button Detect");
-  // }
-  
-  // bool modButtonPressed = (checkButton(currentButtonStates, 1) == false);
-  // if (modButtonPressed) {
-  //   Serial.println("20 INPUT: Modifier Button Detect");
-  // }
+  bool aButtonPressed    = (checkButton(currentButtonStates, 2) == false);
+  bool bButtonPressed    = (checkButton(currentButtonStates, 3) == false);
+  bool cButtonPressed    = (checkButton(currentButtonStates, 4) == false);
+  bool dButtonPressed    = (checkButton(currentButtonStates, 5) == false);
+  bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
 
   // 1. INPUTS
   if (hasMoved) {
@@ -396,8 +396,6 @@ void loop() {
   if (now - lastLogic > logicRefreshSpeed) {                                                                         // IF ITS BEEN 50ms
     lastLogic = now;                                                                                  // TIMESTAMP LAST LOGIC
 
-    // Serial.print("Raw Light Value: ");
-    // Serial.println(analogRead(PIN_LIGHT));
     if (brightnessTool.getSelectedIndex() == 8) {
       setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
     }
