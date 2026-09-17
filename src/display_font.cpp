@@ -178,5 +178,10 @@ void displayBuilder(const char* str, uint64_t* displayWords, bool navDelay) {
 
         uint64_t segmentData = (uint64_t)(segments & 0x1FFFF); 
         displayWords[dIdx] = anodeMap[dIdx] | segmentData;
+
+        extern int WiFILight;
+        if (WiFiLight == 1) {
+            displayWords[dIdx] |= STATUS_LED1;
+        }
     }
 }
