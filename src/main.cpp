@@ -20,6 +20,7 @@ WORK IN PROGRESS                ESP32-S3
 #include "features/notification.h"
 #include "features/timer.h"
 #include "features/clock.h"
+#include "features/keyboard.h"
 
 #include "settings/brightness.h"
 
@@ -35,7 +36,8 @@ enum SystemState {
   MODE_TIMER,
   NOTIFICATION,
   SETTINGS,
-  BRIGHTNESS
+  BRIGHTNESS,
+  KEYBOARD_ENTRY
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -223,6 +225,7 @@ Notification notifTool;
 Timer timerTool;
 Clock Clock;
 Brightness brightnessTool;
+KeyboardInput keyboardTool(32);
 
 // --- SETUP ---
 void setup() {
@@ -379,6 +382,14 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == KEYBOARD_ENTRY) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+            keyboardTool.onKnobTurn(direction);
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
@@ -479,8 +490,8 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 5;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -525,6 +536,13 @@ void loop() {
             timeLastPressed = now;
             menuIndex = 0;
             currentState = SETTINGS;
+          }
+        } else if (menuIndex == 5) {
+          displayBuilder(" KEYBOARD   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            timeLastPressed = now;
+            menuIndex = 0;
+            currentState = KEYBOARD_ENTRY;
           }
         }
         break;
@@ -655,6 +673,48 @@ void loop() {
             menuTimeout = now;
           }
         }
+      }
+      case KEYBOARD_ENTRY: {
+        displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
+
+        if (buttonDetect(homeButtonPressed, now)) {
+            timeLastPressed = now;
+            std::string finalInput = keyboardTool.getEnteredString();
+            Serial.print("User Entered: ");
+            Serial.println(finalInput.c_str());
+            currentState = CLOCK_CLEAN; 
+        }
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+            timeLastPressed = now;
+            keyboardTool.onMoveRight();
+            menuTimeout = now;
+        }
+
+        if (buttonDetect(dButtonPressed, now)) {
+            timeLastPressed = now;
+            keyboardTool.onMoveRight();
+            menuTimeout = now;
+        }
+
+        if (buttonDetect(eButtonPressed, now)) {
+            timeLastPressed = now;
+            keyboardTool.onMoveLeft();
+            menuTimeout = now;
+        }
+
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            keyboardTool.onModButton();
+            menuTimeout = now;
+        }
+
+        if (buttonDetect(aButtonPressed, now)) {
+            timeLastPressed = now;
+            keyboardTool.onAButton();
+            menuTimeout = now;
+        }
+        break;
       }
     }
   }
