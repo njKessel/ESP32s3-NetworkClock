@@ -102,7 +102,7 @@ SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
 SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2); // BUTTON SPI
 
 // --- TIMER POLLING ---
-static const int8_t encoder_states[] = {
+static int8_t DRAM_ATTR encoder_states[] = {
   0, -1,  1,  0,
   1,  0,  0, -1,
  -1,  0,  0,  1,
