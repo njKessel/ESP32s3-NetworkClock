@@ -244,39 +244,40 @@ void setup() {
   alarmTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  Serial.println("00 SETUP: Display latch pin.");
+  Serial.println("01 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
-  Serial.println("00 SETUP: Light sense pin.");
+  Serial.println("02 SETUP: Light sense pin.");
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
-  Serial.println("00 SETUP: Display Output Enable Pin (Brightness).");
+  Serial.println("03 SETUP: Display Output Enable Pin (Brightness).");
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
   Serial.println("10 CALIB: Brightness initial callibration.");
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
-  Serial.println("00 SETUP: Display SPI begin.");
+  Serial.println("04 SETUP: Display SPI begin.");
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
 
   buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
-  Serial.println("00 SETUP: Button SPI begin.");
+  Serial.println("05 SETUP: Button SPI begin.");
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  Serial.println("00 SETUP: Encoder rotation pins.");
+  Serial.println("06 SETUP: Encoder rotation pins.");
 
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
-  Serial.println("00 SETUP: Encoder SW Debounce");
+  Serial.println("07 SETUP: Encoder SW Debounce");
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 
-  Serial.println("00 SETUP: Time set");
+  Serial.println("08 SETUP: Time set");
+  Serial.println("0F SETUP: End of setup");
 }
 
 // --- LOOP ---
