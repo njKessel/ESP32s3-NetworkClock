@@ -74,5 +74,6 @@ String TimeZoneSetting::getDisplayString() {
 }
 
 const char* TimeZoneSetting::getSelectedPosix() {
+    Serial.println("42 TIMEZ: Getting timezone POSIX string");
     return MENU_DATA[currentIndex].posix;
 }

@@ -33,10 +33,12 @@ void Timer::begin() {
 }
 
 void Timer::save() {
+    Serial.println("61 TIMER: Timer save");
     prefs.putBytes("table", table, sizeof(table));
 }
 
 void Timer::factoryReset() {
+    Serial.println("60 TIMER: Timer factory reset");
     prefs.clear();
 
               //TIMER #  HOUR     MINUTE
@@ -267,6 +269,7 @@ String Timer::getTimerDisplay() {
 }
 
 bool Timer::shouldRing(int timerIndex) {
+    Serial.println("69 TIMER: A timer should ring");
     unsigned long target = 0;
     unsigned long currentElapsed = 0;
 
