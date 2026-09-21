@@ -206,22 +206,6 @@ bool buttonDetect(bool buttonPressed, unsigned long now) {
   return false;
 }
 
-void WiFisetup(){                                                         
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);                                         // BEGIN CONNECTING TO WIFI USING GIVEN SSID AND PASSWORD
-  displayBuilder(" CONNECTING ", toDisplayWords, false);                        // BUILD toDisplayWords TO SHOW CONNECTING MESSAGE
-  Serial.println("30 WIFIC: Starting WiFi Connection");
-  while (WiFi.status() != WL_CONNECTED) {                                       // WHILE NOT CONNECTED
-    Serial.println("30 WIFIC: Connection in Progress");
-    for(int i = 0; i < 50; i++) renderDisplay(toDisplayWords);                  // DISPLAY CONNECTING MESSAGE
-  }
-  Serial.println("30 WIFIC: WiFi Connected");
-  
-  WiFiLight = 1;
-
-  unsigned long start = millis();                                               // TIMESTAMP FOR 1 SEC MINIMUM MESSAGE
-  while(millis() - start < 1000) renderDisplay(toDisplayWords);                 // SHOW CONNECTING MESSAGE FOR ONE SECOND TO PREVENT FLICKER
-}
-
 Stopwatch stopwatchTool;
 Alarm alarmTool;
 TimeZoneSetting tzTool;
