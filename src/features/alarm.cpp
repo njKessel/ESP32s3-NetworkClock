@@ -22,10 +22,12 @@ void Alarm::begin() {
 }
 
 void Alarm::save() {
+    Serial.println("A1 ALARM: Saving alarm settings");
     prefs.putBytes("table", table, sizeof(table));
 }
 
 void Alarm::factoryReset() {
+    Serial.println("A0 ALARM: Alarm factory reset");
     prefs.clear();
 
              // ALARM #    HOUR    MINUTE    DAYS
