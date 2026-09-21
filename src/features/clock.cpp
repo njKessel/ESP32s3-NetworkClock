@@ -57,6 +57,7 @@ void Clock::onHomeButtonPress() {
 }
 
 String Clock::getClockDisplay() {
+    Serial.println("C0 CLOCK: Fetching Clock Display");
     if (page == 0) {
         time_t now;
         time(&now);

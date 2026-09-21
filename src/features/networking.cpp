@@ -19,11 +19,13 @@ void Networking::begin() {
 }
 
 void Networking::saveCredentials() {
+    Serial.println("93 NETWK: Saving Network Credentials");
     prefs.putString("ssid", savedSSID.c_str());
     prefs.putString("pass", savedPassword.c_str());
 }
 
 void Networking::factoryReset() {
+    Serial.println("9F NETWK: Network Settings Factory Reset");
     prefs.begin("wifi", false);
     prefs.clear();
     savedSSID = "";
@@ -60,6 +62,7 @@ void Networking::onButtonPress() {
 }
 
 void Networking::startScan() {
+    Serial.println("90 NETWK: Starting Network Scan");
     menuState = NET_SCANNING;
     scannedNetworks.clear();
     
