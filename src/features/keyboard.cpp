@@ -43,6 +43,7 @@ void KeyboardInput::onKnobTurn(int direction) {
 }
 
 void KeyboardInput::onModButton() {
+    Serial.println("E3 KEYBD: Toggle case");
     isLower = !isLower;
     if (cursorPosition < currentString.length()) {
         char c = currentString[cursorPosition];
@@ -55,6 +56,7 @@ void KeyboardInput::onModButton() {
 }
 
 void KeyboardInput::onAButton() {
+    Serial.println("E2 KEYBD: Toggle input visibility");
     forceVisible = !forceVisible;
 }
 
