@@ -269,7 +269,6 @@ String Timer::getTimerDisplay() {
 }
 
 bool Timer::shouldRing(int timerIndex) {
-    Serial.println("69 TIMER: A timer should ring");
     unsigned long target = 0;
     unsigned long currentElapsed = 0;
 
@@ -292,6 +291,7 @@ bool Timer::shouldRing(int timerIndex) {
     }
 
     if (currentElapsed >= target && target > 0) {
+        Serial.println("69 TIMER: A timer should ring");
         latch = true;
         if (timerIndex == 1) {
             runningT1 = false;
