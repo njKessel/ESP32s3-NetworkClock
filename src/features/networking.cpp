@@ -28,7 +28,7 @@ void Networking::factoryReset() {
     prefs.clear();
     savedSSID = "";
     savedPassword = "";
-    WiFi.disconnect();
+    WiFi.disconnect(true, true);
 }
 
 void Networking::reset() {
