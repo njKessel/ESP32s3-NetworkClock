@@ -21,6 +21,7 @@ WORK IN PROGRESS                ESP32-S3
 #include "features/timer.h"
 #include "features/clock.h"
 #include "features/keyboard.h"
+#include "features/networking.h"
 
 #include "settings/brightness.h"
 
@@ -37,7 +38,8 @@ enum SystemState {
   NOTIFICATION,
   SETTINGS,
   BRIGHTNESS,
-  KEYBOARD_ENTRY
+  KEYBOARD_ENTRY,
+  NETWORK_MENU
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -91,6 +93,8 @@ bool eButtonPressed = false;
 
 uint8_t originalBrightness;
 uint8_t originalBrightnessIndex;
+
+int keyboardMode = 0;
 
 SPIClass buttonSPI(HSPI);               // second SPI instance for the buttons
 
@@ -226,6 +230,7 @@ Timer timerTool;
 Clock Clock;
 Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
+Networking networkTool;
 
 // --- SETUP ---
 void setup() {
@@ -245,6 +250,7 @@ void setup() {
     
     alarmTool.begin();      
     alarmTool.factoryReset();
+    networkTool.factoryReset();
     
     unsigned long startReset = millis();
     while (millis() - startReset < 2000) {
@@ -252,6 +258,7 @@ void setup() {
     }
   }
   alarmTool.begin();
+  networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
   Serial.println("00 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
@@ -275,7 +282,6 @@ void setup() {
   Serial.println("00 SETUP: Button SPI begin.");
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
-  WiFisetup();                                                                  // CONNECT TO WIFI
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
   Serial.println("00 SETUP: Encoder rotation pins.");
@@ -319,6 +325,8 @@ void loop() {
   bool cButtonPressed    = (checkButton(currentButtonStates, 4) == false);
   bool dButtonPressed    = (checkButton(currentButtonStates, 5) == false);
   bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
+
+  WiFiLight = networkTool.isConnected() ? 1 : 0;
 
   // 1. INPUTS
   if (hasMoved) {
@@ -390,6 +398,14 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == NETWORK_MENU) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+            networkTool.onKnobTurn(direction);
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
@@ -425,7 +441,7 @@ void loop() {
       alarmTool.reset();
     }
 
-    if (buttonDetect(homeButtonPressed, now)) {
+    if (buttonDetect(homeButtonPressed, now) && (currentState != KEYBOARD_ENTRY)) {
       Serial.println("20 INPUT: Home Button Detect");
       timeLastPressed = now;
       alarmTool.reset();
@@ -450,23 +466,23 @@ void loop() {
       } else if (alarmTool.shouldRing(1)) {
         activeNotification = 1;
         currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Alarm Notification 1");
+        Serial.println("81 NOTIF: Alarm Notification 1");
       } else if (alarmTool.shouldRing(2)) {
         activeNotification = 2;
         currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Alarm Notification 2");
+        Serial.println("82 NOTIF: Alarm Notification 2");
       } else if (timerTool.shouldRing(1)) {
         activeNotification = 3;
         currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Timer Notification 1");
+        Serial.println("83 NOTIF: Timer Notification 1");
       } else if (timerTool.shouldRing(2)) {
         activeNotification = 4;
         currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Timer Notification 2");
+        Serial.println("84 NOTIF: Timer Notification 2");
       } else if (timerTool.shouldRing(3)) {
         activeNotification = 5;
         currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Timer Notification 3");
+        Serial.println("85 NOTIF: Timer Notification 3");
       }
     }
 
@@ -649,8 +665,8 @@ void loop() {
         break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 1;
-        if (menuIndex > 1) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 2;
+        if (menuIndex > 2) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -672,7 +688,17 @@ void loop() {
             timeLastPressed = now;
             menuTimeout = now;
           }
+
+        } else if (menuIndex == 2) {
+          displayBuilder(" NETWORK    ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = NETWORK_MENU;
+            networkTool.reset();
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
         }
+        break;
       }
       case KEYBOARD_ENTRY: {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
@@ -680,9 +706,21 @@ void loop() {
         if (buttonDetect(homeButtonPressed, now)) {
             timeLastPressed = now;
             std::string finalInput = keyboardTool.getEnteredString();
-            Serial.print("User Entered: ");
-            Serial.println(finalInput.c_str());
-            currentState = CLOCK_CLEAN; 
+            
+            if (keyboardMode == 1) { 
+                networkTool.setTargetSSID(finalInput);
+                keyboardTool.reset();
+                keyboardMode = 2; 
+            } else if (keyboardMode == 2) { 
+                networkTool.setTargetPassword(finalInput);
+                networkTool.connectToTarget();
+                currentState = NETWORK_MENU;
+                keyboardMode = 0; 
+            } else { 
+                Serial.print("User Entered: ");
+                Serial.println(finalInput.c_str());
+                currentState = CLOCK_CLEAN; 
+            }
         }
 
         if (buttonPressed && (now - timeLastPressed > 250)) {
@@ -713,6 +751,37 @@ void loop() {
             timeLastPressed = now;
             keyboardTool.onAButton();
             menuTimeout = now;
+        }
+        break;
+      }
+
+      case NETWORK_MENU: {
+        displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, true);
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+            timeLastPressed = now;
+            menuTimeout = now;
+            NetworkMenuState netState = networkTool.getMenuState();
+            
+            if (netState == NET_INIT || netState == NET_FAILED || netState == NET_CONNECTED) {
+                networkTool.onButtonPress();
+            } 
+            else if (netState == NET_SELECT_SSID) {
+                networkTool.onButtonPress();
+                
+                keyboardTool.reset();
+                if (networkTool.isCustomSelected()) {
+                    keyboardMode = 1;
+                } else {
+                    keyboardMode = 2;
+                }
+                currentState = KEYBOARD_ENTRY;
+            }
+        }
+        
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            currentState = SETTINGS;
         }
         break;
       }

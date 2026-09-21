@@ -58,10 +58,16 @@ void Clock::onHomeButtonPress() {
 
 String Clock::getClockDisplay() {
     if (page == 0) {
+        time_t now;
+        time(&now);
+        
         struct tm ti;
-        if (!getLocalTime(&ti)) {
-            return "Time Error"; 
+        localtime_r(&now, &ti); 
+        
+        if (ti.tm_year < 116) {
+            return "  SYNCING   ";
         }
+        
         return timeUtil.formatTime(ti, hour24);
         
     } else if (page == 1) {
@@ -75,7 +81,6 @@ String Clock::getClockDisplay() {
                 currentRemain = 0;
                 running = false;
                 focusRemain = 0;
-                
             }
         }
 
