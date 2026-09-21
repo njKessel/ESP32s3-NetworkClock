@@ -24,6 +24,7 @@ void Networking::saveCredentials() {
 }
 
 void Networking::factoryReset() {
+    prefs.begin("wifi", false);
     prefs.clear();
     savedSSID = "";
     savedPassword = "";
