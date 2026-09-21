@@ -400,6 +400,7 @@ void loop() {
   int logicRefreshSpeed = 50;
 
   if (currentState == STOPWATCH) {
+    Serial.println("DBG 061 REFRE: Logic refresh timing changed to 20ms");
     logicRefreshSpeed = 20; 
   } else {
     logicRefreshSpeed = 50; 
