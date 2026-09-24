@@ -57,7 +57,6 @@ void Clock::onHomeButtonPress() {
 }
 
 String Clock::getClockDisplay() {
-    Serial.println("C0 CLOCK: Fetching Clock Display");
     if (page == 0) {
         time_t now;
         time(&now);
@@ -66,6 +65,7 @@ String Clock::getClockDisplay() {
         localtime_r(&now, &ti); 
         
         if (ti.tm_year < 116) {
+            Serial.println("C1 CLOCK: Waiting for NTP sync");
             return "  SYNCING   ";
         }
         

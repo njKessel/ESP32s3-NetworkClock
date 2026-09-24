@@ -9,7 +9,7 @@ WORK IN PROGRESS                ESP32-S3
 #include <time.h>             // TIME FUNCTIONS
 #include <esp_timer.h>        // FOR DEBOUNCE (HARDWARE TIMER)
 
-#include "secrets.h"          // WIFI CRED          
+// #include "secrets.h"          // WIFI CRED          
 #include "display_font.h"     // CHAR DISPLAY HANDLER
 #include "selection_util.h"   // FLASHING CURSOR
 #include "time_util.h"        // TIME INIT AND FORMAT
@@ -82,6 +82,7 @@ volatile int menuIndex = 0;             // INIT MENU INDEX
 volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
 bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
 int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
+int encoderDebug_timeLastPressed = 0; 
 
 bool homeButtonPressed = false;
 bool modButtonPressed = false;
@@ -202,7 +203,9 @@ void displayBufferTime(bool showArrows) {
 }
 
 bool buttonDetect(bool buttonPressed, unsigned long now) {
-  if (buttonPressed && (now - timeLastPressed > 250)) return true;
+  if (buttonPressed && (now - timeLastPressed > 250)) {
+    return true; 
+  }
   return false;
 }
 
@@ -242,6 +245,7 @@ void setup() {
     }
   }
   alarmTool.begin();
+  timerTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
   Serial.println("01 SETUP: Display latch pin.");
@@ -274,7 +278,7 @@ void setup() {
   Serial.println("07 SETUP: Encoder SW Debounce");
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
-  timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
+  // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 
   Serial.println("08 SETUP: Time set");
   Serial.println("0F SETUP: End of setup");
@@ -286,7 +290,7 @@ void loop() {
 
   if (lastState != currentState) {
     Serial.print("00 STATE: State change to ");
-    Serial.println(currentState);
+    Serial.println(SystemState(currentState));
   }
   lastState = currentState;
 
@@ -298,9 +302,13 @@ void loop() {
     encoderMoved = false;
   }
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
-  if (buttonDetect(buttonPressed, now)) {
-    Serial.println("20 INPUT: Encoder Button Detect");
+
+  if (buttonPressed && (now - encoderDebug_timeLastPressed > 250)) {
+    Serial.println("DBG 027 STATE: Encoder Button Detect ");
+    encoderDebug_timeLastPressed = now;
   }
+
+
   uint8_t currentButtonStates = pullButtonStates();
 
   bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
@@ -312,6 +320,13 @@ void loop() {
   bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
 
   WiFiLight = networkTool.isConnected() ? 1 : 0;
+
+  static bool timeInitialized = false;
+  if (WiFiLight == 1 && !timeInitialized) {
+      Serial.println("95 NETWK: WiFi Connected, starting NTP sync");
+      timeUtil.initTime("EST5EDT");
+      timeInitialized = true;
+  }
 
   // 1. INPUTS
   if (hasMoved) {
@@ -476,8 +491,6 @@ void loop() {
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
         displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
-
-
 
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)

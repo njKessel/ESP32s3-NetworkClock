@@ -1,4 +1,15 @@
 #include "networking.h"
+#include "secrets.h"
+
+volatile bool globalWiFiConnected = false;
+
+void WiFiEvent(WiFiEvent_t event) {
+    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+        globalWiFiConnected = true;
+    } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        globalWiFiConnected = false;
+    }
+}
 
 Networking::Networking() {
     menuState = NET_INIT;
@@ -9,12 +20,25 @@ Networking::Networking() {
 }
 
 void Networking::begin() {
+    Serial.println("90 NETWK: Starting WiFI Connection");
+    
+    WiFi.onEvent(WiFiEvent);
+    
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect(false, true); 
+    delay(50);
+    
     prefs.begin("wifi", false);
-    savedSSID = prefs.getString("ssid", "").c_str();
-    savedPassword = prefs.getString("pass", "").c_str();
-
-    if (!savedSSID.empty()) {
+    
+    if (prefs.isKey("ssid")) {
+        savedSSID = prefs.getString("ssid", "").c_str();
+        savedPassword = prefs.getString("pass", "").c_str();
+        Serial.println("DBG 091 NETWK: Connecting to saved network");
         WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
+    } else {
+        Serial.println("DBG 092 NETWK: No network saved");
+        savedSSID = "";
+        savedPassword = "";
     }
 }
 
@@ -97,7 +121,7 @@ void Networking::connectToTarget() {
 }
 
 bool Networking::isConnected() {
-    return WiFi.status() == WL_CONNECTED;
+    return globalWiFiConnected;
 }
 
 std::string Networking::getCurrentSSID() {
@@ -111,7 +135,7 @@ bool Networking::isCustomSelected() {
 
 NetworkMenuState Networking::getMenuState() {
     if (menuState == NET_CONNECTING) {
-        if (WiFi.status() == WL_CONNECTED) {
+        if (globalWiFiConnected) {
             if (millis() - connectionStartTime >= 1000) {
                 menuState = NET_CONNECTED;
                 connectedTime = millis(); 
