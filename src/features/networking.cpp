@@ -118,6 +118,7 @@ void Networking::connectToTarget() {
     
     WiFi.disconnect();
     WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
+    Serial.println("DBG 090 NETWK: Connecting to network ");
 }
 
 bool Networking::isConnected() {
@@ -140,9 +141,11 @@ NetworkMenuState Networking::getMenuState() {
                 menuState = NET_CONNECTED;
                 connectedTime = millis(); 
                 saveCredentials();
+                Serial.println("DBG 090 NETWK: Connected to network ");
             }
         } else if (millis() - connectionStartTime > 10000) {
             menuState = NET_FAILED;
+            Serial.println("DBG 090 NETWK: Failed to connect to network ");
         }
     }
     return menuState;
@@ -185,7 +188,6 @@ std::string Networking::getDisplayString() {
             break;
     }
 
-    // Pad text to perfectly center it within an 8-character window
     int padding = 8 - text.length();
     if (padding > 0) {
         int padLeft = padding / 2;
