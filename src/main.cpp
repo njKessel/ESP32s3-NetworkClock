@@ -134,24 +134,30 @@ SPIClass buttonSPI(HSPI);                                 // second SPI instance
 SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0);     // Set the display's SPI settings
 SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2);     // Set the button panel's SPI settings 
 
-// --- TIMER POLLING ---
-static int8_t DRAM_ATTR encoder_states[] = {
+////////////////////////////////////////////////////////////
+// ENCODER LOGIC ///////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+// Lookup table ////////////////////////////////////////////
+static int8_t DRAM_ATTR encoder_states[] = {              // Quadrature encoder lookup table, stored in DRAM
   0, -1,  1,  0,
   1,  0,  0, -1,
  -1,  0,  0,  1,
   0,  1, -1,  0
 };
 
-void IRAM_ATTR onTimer(void* arg) {        
-  static uint8_t old_AB = 0;                                                    // init old_AB = 0b00000000 
-  old_AB <<= 2;                                                                 // MOVES BITS LEFT 2
-  old_AB |= (digitalRead(PIN_ENCODER_A) << 1) | digitalRead(PIN_ENCODER_B);     // READ PINS A AND B, PUT PIN A VAL IN POS 1 AND PIN B VAL IN POS 2, NOW WE HAVE 0b0000ABAB WHERE FIRST AB IS OLDAB AND SECOND AB IS NEW AB
-  old_AB &= 0x0f;                                                               // ZEROS THE EXTRA BITS SO MAX 4 BITS
+// Interrupt Handler ///////////////////////////////////////
+void IRAM_ATTR onTimer(void* arg) {                       // Store in internal RAM
+  static uint8_t old_AB = 0;                              // init old_AB at 0 to signal no change at boot
+  old_AB <<= 2;                                           // Move last check's bits over
+  old_AB |= (digitalRead(PIN_ENCODER_A) << 1) | digitalRead(PIN_ENCODER_B);     
+                                                          // Read the pin states and combine them to get the index for the lookup table
+  old_AB &= 0x0f;                                         // Ensure max of 4 bits
 
-  int change = encoder_states[old_AB];                                          // LOOK TO SEE IF VALID MOVE
-  if (change != 0) {                                                            // IF VALID MOVE
-    encoderRawCount += change;                                                  // INCREMENT encoderRawCount BY VALUE IN encoder_states
-    encoderMoved = true;                                                        // SIGNAL THE ENCODER CHANGE
+  int change = encoder_states[old_AB];                    // Looks at what old_AB means, interpret if there was a change
+  if (change != 0) {
+    encoderRawCount += change;                            // Increment encoderRawCount by the value stored in encoder_states
+    encoderMoved = true;                                  // Signal that the encoder changed so other functions can tell
   }
 }
 
@@ -246,7 +252,7 @@ Alarm alarmTool;
 TimeZoneSetting tzTool;
 Notification notifTool;
 Timer timerTool;
-Clock Clock;
+Clock clockTool;
 Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
@@ -480,7 +486,7 @@ void loop() {
       alarmTool.reset();
       timerTool.reset();
       stopwatchTool.reset();
-      Clock.onHomeButtonPress();
+      clockTool.onHomeButtonPress();
       if (currentState == BRIGHTNESS) {
         setDisplayBrightness(originalBrightness);
         brightnessTool.cancel(originalBrightnessIndex);
@@ -522,16 +528,16 @@ void loop() {
     // State Machine
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
-        displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
+        displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
 
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
-          Clock.onButtonPress();
+          clockTool.onButtonPress();
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
         }
         if (buttonDetect(modButtonPressed, now)) {
             timeLastPressed = now;
-            Clock.onModButtonPress();
+            clockTool.onModButtonPress();
             menuTimeout = now;
           }
         break;
@@ -541,15 +547,15 @@ void loop() {
         if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
-          displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
+          displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
           if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
             lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
-            Clock.onButtonPress();
+            clockTool.onButtonPress();
             timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
           }
           if (buttonDetect(modButtonPressed, now)) {
             timeLastPressed = now;
-            Clock.onModButtonPress();
+            clockTool.onModButtonPress();
             menuTimeout = now;
           }
         } else if (menuIndex == 1) {
