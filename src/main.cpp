@@ -54,29 +54,30 @@ enum SystemState {
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
   NETWORK_MENU                                            // Network scan and config menu
 };
-
-SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
+SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
-unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
 
-// --- GLOBALS ---
-uint64_t toDisplayWords[12];            // INIT ARRAY FOR THE PATTERNS SENT TO THE SHIFT REGISTERS
-unsigned long lastUpdate = 0;           // INIT TIME SINCE THE LAST SCREEN MUX
-bool hour24;
-int activeNotification = -1;
+unsigned long menuTimeout = 0;
 
-// --- PIN DEFINITIONS ---
-constexpr int PIN_COPI  = 13;           // SPI SERIAL
-constexpr int PIN_LATCH = 6;            // SPI RCLK
-constexpr int PIN_OE    = 4;            // 74HC595 OUTPUT ENABLE (BRIGHTNESS VIA PWM)
-constexpr int PIN_SCK   = 12;           // SPI CLOCK
+////////////////////////////////////////////////////////////
+// GLOBALS /////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+uint64_t toDisplayWords[12];                              // Initializes the array of 64-bit integers containing the segments and decimal point, mux bits, and status LED bits
+unsigned long lastUpdate = 0;                             // Time since last screen update
+bool hour24;                                              // Boolean for handling if the clock is in 24-hour (true) or 12-hour mode (false)
+int activeNotification = -1;                              // Set no current notifications
+int WiFiLight = 0;                                        // Default WiFi indicator to off
 
-constexpr int PIN_LIGHT = 7;            // LIGHT SENSOR
-constexpr int PIN_MFP   = 8;
-constexpr int PIN_SCL   = 5;
-constexpr int PIN_SDA   = 38;
+////////////////////////////////////////////////////////////
+// PIN DEFINITIONS /////////////////////////////////////////
+////////////////////////////////////////////////////////////
+constexpr int PIN_COPI  = 13;                             // SPI
+constexpr int PIN_LATCH = 6;                              // SPI RCLK
+constexpr int PIN_OE    = 4;                              // 75HC595 display eutput enable, PWM control for brightness
+constexpr int PIN_SCK   = 12;                             // SPI clock
 
-int WiFiLight = 0;
+constexpr int PIN_LIGHT = 7;                              // Phototransistor
+constexpr int PIN_MFP   = 8;                              // External RTC 
 
 // --- ENCODER ---
 constexpr int PIN_ENCODER_PUSH = 15;     // PIN FOR PRESSING ENCODER
