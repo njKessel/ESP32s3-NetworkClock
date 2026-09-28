@@ -3,29 +3,40 @@ ESP32 NETWORK CLOCK             NATHANIEL KESSEL
 WORK IN PROGRESS                ESP32-S3
 */
 
-#include <Arduino.h>          // ARDUINO      
-#include <WiFi.h>             // WIFI
-#include <SPI.h>              // SPI FOR 74HC595
-#include <time.h>             // TIME FUNCTIONS
-#include <esp_timer.h>        // FOR DEBOUNCE (HARDWARE TIMER)
+////////////////////////////////////////////////////////////
+// INCLUDES ////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-// #include "secrets.h"          // WIFI CRED          
-#include "display_font.h"     // CHAR DISPLAY HANDLER
-#include "selection_util.h"   // FLASHING CURSOR
-#include "time_util.h"        // TIME INIT AND FORMAT
+// Arduino Headers
+#include <Arduino.h>                                      // Basic arduino functions and classes
+#include <WiFi.h>                                         // Arduino WiFi header/resources
+#include <SPI.h>                                          // Arduino SPI header, used for the button panel and 74HC595 display
 
-#include "features/stopwatch.h"        // STOPWATCH CLASS
-#include "features/alarm.h"
-#include "features/timezone.h"
-#include "features/notification.h"
-#include "features/timer.h"
-#include "features/clock.h"
-#include "features/keyboard.h"
-#include "features/networking.h"
+// ESP32 Headers
+#include <esp_timer.h>                                    // Used for encoder debounce in setupEncoderTimer
 
-#include "settings/brightness.h"
+// C++ Libraries
+#include <string>                                         // Used for routing keyboard output
 
-#include <string>
+// My Headers //////////////////////////////////////////////
+
+// Display Specific Headers
+#include "display_font.h"                                 // Character segment mappings, display fonts, and final display buffer construction
+#include "selection_util.h"                               // Provides the flashing cursor used in the alarm configuration menu
+#include "time_util.h"                                    // Time formatting for display, handles 24hr/12hr time and padding
+
+// Features
+#include "features/stopwatch.h"                           // Stopwatch class for the stopwatch feature
+#include "features/alarm.h"                               // Alarm class for the alarm feature
+#include "features/timezone.h"                            // Timezone class and data for the timezone configuration menu
+#include "features/notification.h"                        // Notification class for flashing notification pop ups triggered by alarms and timers
+#include "features/timer.h"                               // Configurable timer class
+#include "features/clock.h"                               // Clock class for the clock page's logic 
+#include "features/keyboard.h"                            // Text input class, primarily used for networking SSID/Password inputs
+#include "features/networking.h"                          // Networking class for setting up WiFi
+
+// Settings
+#include "settings/brightness.h"                          // Brightness settings menu class
 
 // --- STATE MACHINE ---
 enum SystemState {
