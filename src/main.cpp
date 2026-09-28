@@ -62,59 +62,74 @@ unsigned long menuTimeout = 0;
 ////////////////////////////////////////////////////////////
 // GLOBALS /////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
+
+// Display /////////////////////////////////////////////////
 uint64_t toDisplayWords[12];                              // Initializes the array of 64-bit integers containing the segments and decimal point, mux bits, and status LED bits
 unsigned long lastUpdate = 0;                             // Time since last screen update
+
+// Clock ///////////////////////////////////////////////////
 bool hour24;                                              // Boolean for handling if the clock is in 24-hour (true) or 12-hour mode (false)
+
+// Notifications ///////////////////////////////////////////
 int activeNotification = -1;                              // Set no current notifications
+
+// Indicator Light Status //////////////////////////////////
 int WiFiLight = 0;                                        // Default WiFi indicator to off
+
+// Encoder /////////////////////////////////////////////////
+volatile long encoderRawCount = 0;                        // Init the number of pulses from the PEC11R
+long lastEncoderRead = 0;                                 // Since last encoder read timer
+bool lastEncState = false;                                // Init the previous encoder movement
+volatile bool encoderMoved = false;                       // Init tracking if the encoder moved recently
+int timeLastPressed = 0;                                  // Track time since the last encoder press for debounce
+int encoderDebug_timeLastPressed = 0;                     // Debug for encoder press
+
+// Buttons /////////////////////////////////////////////////
+bool homeButtonPressed =  false;
+bool modButtonPressed  =  false;
+bool aButtonPressed    =  false;
+bool bButtonPressed    =  false;
+bool cButtonPressed    =  false;
+bool dButtonPressed    =  false;
+bool eButtonPressed    =  false;
+
+// Menu ////////////////////////////////////////////////////
+volatile int menuIndex = 0;                               // Menu index tracking
+int keyboardMode = 0;                                     // Track if you are in a keyboard input
+
+// Brightness //////////////////////////////////////////////
+uint8_t originalBrightness;                               // Tracks what the current brightness level is
+uint8_t originalBrightnessIndex;                          // Tracks where in the brightness menu it is   
 
 ////////////////////////////////////////////////////////////
 // PIN DEFINITIONS /////////////////////////////////////////
 ////////////////////////////////////////////////////////////
-constexpr int PIN_COPI  = 13;                             // SPI
-constexpr int PIN_LATCH = 6;                              // SPI RCLK
-constexpr int PIN_OE    = 4;                              // 75HC595 display eutput enable, PWM control for brightness
-constexpr int PIN_SCK   = 12;                             // SPI clock
+constexpr int PIN_COPI          =       13;               // SPI for the display
+constexpr int PIN_LATCH         =       6;                // SPI RCLK for the display
+constexpr int PIN_OE            =       4;                // 75HC595 display output enable, PWM control for brightness
+constexpr int PIN_SCK           =       12;               // SPI clock for the display
 
-constexpr int PIN_LIGHT = 7;                              // Phototransistor
-constexpr int PIN_MFP   = 8;                              // External RTC 
+// Peripherals /////////////////////////////////////////////
+constexpr int PIN_LIGHT         =       7;                // Phototransistor
+constexpr int PIN_MFP           =       8;                // External RTC 
 
-// --- ENCODER ---
-constexpr int PIN_ENCODER_PUSH = 15;     // PIN FOR PRESSING ENCODER
-constexpr int PIN_ENCODER_A = 9;        // PIN A ON ENCODER
-constexpr int PIN_ENCODER_B = 10;       // PIN B ON ENCODER
+// Encoder /////////////////////////////////////////////////
+constexpr int PIN_ENCODER_PUSH  =       15;               // Encoder push button
+constexpr int PIN_ENCODER_A     =       9;                // Encoder's pin A for rotation tracking
+constexpr int PIN_ENCODER_B     =       10;               // Encoder's pin B for rotation tracking
 
-// --- BUTTONS ---
-constexpr int PIN_COPI_BUTTON = 14;
-constexpr int PIN_LATCH_BUTTON = 1;
-constexpr int PIN_SCK_BUTTON = 11;
+// Buttons /////////////////////////////////////////////////
+constexpr int PIN_COPI_BUTTON   =       14;               // SPI for the button panel
+constexpr int PIN_LATCH_BUTTON  =       1;                // SPI RCLK for the button panel
+constexpr int PIN_SCK_BUTTON    =       11;               // SPI clock for the button panel
 
-volatile long encoderRawCount = 0;      // INIT FOR TRACKING PULSES FROM ENCODER
-long lastEncoderRead = 0;               // INIT TIMER SINCE LAST ENCODER READ
+////////////////////////////////////////////////////////////
+// SPI  ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+SPIClass buttonSPI(HSPI);                                 // second SPI instance for the buttons with the ESP32's HSPI bus
 
-volatile int menuIndex = 0;             // INIT MENU INDEX
-volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
-bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
-int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
-int encoderDebug_timeLastPressed = 0; 
-
-bool homeButtonPressed = false;
-bool modButtonPressed = false;
-bool aButtonPressed = false;
-bool bButtonPressed = false;
-bool cButtonPressed = false;
-bool dButtonPressed = false;
-bool eButtonPressed = false;
-
-uint8_t originalBrightness;
-uint8_t originalBrightnessIndex;
-
-int keyboardMode = 0;
-
-SPIClass buttonSPI(HSPI);               // second SPI instance for the buttons
-
-SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
-SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2); // BUTTON SPI
+SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0);     // Set the display's SPI settings
+SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2);     // Set the button panel's SPI settings 
 
 // --- TIMER POLLING ---
 static int8_t DRAM_ATTR encoder_states[] = {
