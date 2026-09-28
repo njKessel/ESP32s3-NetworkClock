@@ -41,6 +41,17 @@
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
 
+TimeUtil timeUtil;
+Stopwatch stopwatchTool;
+Alarm alarmTool;
+TimeZoneSetting tzTool;
+Notification notifTool;
+Timer timerTool;
+Clock clockTool;
+Brightness brightnessTool;
+KeyboardInput keyboardTool(32);
+Networking networkTool;
+
 ////////////////////////////////////////////////////////////
 // STATES //////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -171,7 +182,36 @@ void setupEncoderTimer() {
   esp_timer_start_periodic(encoder_timer, 1000);                                // STARTS TIMER BY ID AND W/O STOP (PERIODIC)
 }
 
-// --- LOW LEVEL HARDWARE ---
+////////////////////////////////////////////////////////////
+// BUTTON LOGIC ////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+uint8_t pullButtonStates() {
+  digitalWrite(PIN_LATCH_BUTTON, LOW);
+  delayMicroseconds(1);
+  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
+  delayMicroseconds(1);
+  
+  buttonSPI.beginTransaction(btSettings);
+  uint8_t buttonStates = buttonSPI.transfer(0);
+  buttonSPI.endTransaction();
+  return buttonStates; 
+}
+
+bool checkButton(uint8_t buttonStates, int bitIndex) {
+  return (buttonStates & (1 << bitIndex)) != 0;
+}
+
+bool buttonDetect(bool buttonPressed, unsigned long now) {
+  if (buttonPressed && (now - timeLastPressed > 250)) {
+    return true; 
+  }
+  return false;
+}
+////////////////////////////////////////////////////////////
+// Display Handling ////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
 static void latchPulse() {                                                    
   digitalWrite(PIN_LATCH, HIGH);                                                // SET LATCH PIN HIGH
   delayMicroseconds(1);                                                         // WAIT
@@ -193,23 +233,6 @@ void spiWrite64(uint64_t data) {
   latchPulse();                                                                 // LATCH SHIFT REGISTERS
 }
 
-// Recieving data
-uint8_t pullButtonStates() {
-  digitalWrite(PIN_LATCH_BUTTON, LOW);
-  delayMicroseconds(1);
-  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
-  delayMicroseconds(1);
-  
-  buttonSPI.beginTransaction(btSettings);
-  uint8_t buttonStates = buttonSPI.transfer(0);
-  buttonSPI.endTransaction();
-  return buttonStates; 
-}
-
-bool checkButton(uint8_t buttonStates, int bitIndex) {
-  return (buttonStates & (1 << bitIndex)) != 0;
-}
-
 // --- RENDER FUNCTION ---
 void renderDisplay(uint64_t* currentBuffer) {
   for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
@@ -220,16 +243,12 @@ void renderDisplay(uint64_t* currentBuffer) {
   }
 }
 
-
 void setDisplayBrightness(uint8_t brightnessLevel) {
     uint8_t hardwareDuty = 255 - brightnessLevel; 
 
     ledcWrite(0, hardwareDuty); 
 }
 
-TimeUtil timeUtil;
-
-// --- FUNCTIONS ---
 void displayBufferTime(bool showArrows) {
   if (lastEncState) {hour24 = true;} else {hour24 = false;};
 
@@ -240,24 +259,13 @@ void displayBufferTime(bool showArrows) {
   }
 }
 
-bool buttonDetect(bool buttonPressed, unsigned long now) {
-  if (buttonPressed && (now - timeLastPressed > 250)) {
-    return true; 
-  }
-  return false;
-}
 
-Stopwatch stopwatchTool;
-Alarm alarmTool;
-TimeZoneSetting tzTool;
-Notification notifTool;
-Timer timerTool;
-Clock clockTool;
-Brightness brightnessTool;
-KeyboardInput keyboardTool(32);
-Networking networkTool;
+            /////////   /////////   /////////   ///   ///   /////////
+            ///         ///            ///      ///   ///   ///   ///
+//////////  /////////   /////////      ///      ///   ///   /////////   ////////////////////////////////////////////////////////
+                  ///   ///            ///      ///   ///   ///
+            /////////   /////////      ///      /////////   ///
 
-// --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
   
@@ -322,7 +330,12 @@ void setup() {
   Serial.println("0F SETUP: End of setup");
 }
 
-// --- LOOP ---
+            ///////////////   /////////   /////////   /////////
+            ///   ///   ///   ///   ///      ///      ///   ///
+//////////  ///   ///   ///   /////////      ///      ///   ///   //////////////////////////////////////////////////////////////
+            ///   ///   ///   ///   ///      ///      ///   ///
+            ///   ///   ///   ///   ///   /////////   ///   ///
+
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
 
