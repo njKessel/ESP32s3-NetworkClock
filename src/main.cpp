@@ -38,19 +38,21 @@ WORK IN PROGRESS                ESP32-S3
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
 
-// --- STATE MACHINE ---
+////////////////////////////////////////////////////////////
+// STATES //////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 enum SystemState {
-  CLOCK_CLEAN,     // CLOCK WITHOUT NAVIGATON
-  NAV_MODE,        // MENU WITH NAVIGATION ARROWS, IND 0 IS CLOCK + NAV, IND 1 IS TIME ZONE
-  TZ_SELECT,      // TIME ZONE MENU
-  STOPWATCH,
-  ALARM,
-  MODE_TIMER,
-  NOTIFICATION,
-  SETTINGS,
-  BRIGHTNESS,
-  KEYBOARD_ENTRY,
-  NETWORK_MENU
+  CLOCK_CLEAN,                                            // Clock screen without the navigation context
+  NAV_MODE,                                               // Main menu navigation
+  TZ_SELECT,                                              // Time zone configuration menu
+  STOPWATCH,                                              // Simple stopwatch
+  ALARM,                                                  // Configurable alarm with day-specific repeats, 3 alarms
+  MODE_TIMER,                                             // Configurable timer, up to three timers
+  NOTIFICATION,                                           // Notification pop ups
+  SETTINGS,                                               // Settings submenu, contains TZ_SELECT, BRIGHTNESS, and NETWORK_MENU
+  BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
+  KEYBOARD_ENTRY,                                         // Keyboard used for network config
+  NETWORK_MENU                                            // Network scan and config menu
 };
 
 SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
@@ -516,8 +518,8 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 5;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -563,14 +565,7 @@ void loop() {
             menuIndex = 0;
             currentState = SETTINGS;
           }
-        } else if (menuIndex == 5) {
-          displayBuilder(" KEYBOARD   ", toDisplayWords, true);
-          if (buttonDetect(buttonPressed, now)) {
-            timeLastPressed = now;
-            menuIndex = 0;
-            currentState = KEYBOARD_ENTRY;
-          }
-        }
+        } 
         break;
 
       case TZ_SELECT:
