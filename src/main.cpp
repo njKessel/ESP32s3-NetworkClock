@@ -1,6 +1,9 @@
 /*
-ESP32 NETWORK CLOCK             NATHANIEL KESSEL
-WORK IN PROGRESS                ESP32-S3
+  PROJECT:      ESP32 Network Clock
+  AUTHOR:       Nathaniel Kessel
+  DEVICE:       ESP32-S3
+  DATE:         2026-09-28
+  VERSION:      pre-release
 */
 
 ////////////////////////////////////////////////////////////
