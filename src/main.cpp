@@ -51,6 +51,11 @@ Clock clockTool;
 Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
+////////////////////////////////////////////////////////////
+// DEBUG ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+bool debug = true;
+bool verboseDebug = true;
 
 ////////////////////////////////////////////////////////////
 // STATES //////////////////////////////////////////////////
@@ -268,17 +273,18 @@ void displayBufferTime(bool showArrows) {
 
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
-  
+  Serial.println("DBG 001 SETUP: Serial Monitor Online");
+  Serial.println("DBG 000 SETUP: Setup begin");
   uint32_t start = millis();
   while (!Serial && (millis() - start < 3000)) {
     delay(10); 
   }
   
-  Serial.println("00 SETUP: Serial Monitor Online");
+  
 
   pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
-    Serial.println("Resetting ");
+    Serial.println("DBG XXX RESET: Factory reset");
     displayBuilder(" RESETTING  ", toDisplayWords, false);
     
     alarmTool.begin();      
@@ -294,40 +300,39 @@ void setup() {
   timerTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  Serial.println("01 SETUP: Display latch pin.");
+  Serial.println("DBG 002 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
-  Serial.println("02 SETUP: Light sense pin.");
+  Serial.println("DBG 003 SETUP: Light sense pin.");
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
-  Serial.println("03 SETUP: Display Output Enable Pin (Brightness).");
+  Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
-  Serial.println("10 CALIB: Brightness initial callibration.");
+  Serial.println("DBG 020 CALIB: Brightness initial callibration.");
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
-  Serial.println("04 SETUP: Display SPI begin.");
+  Serial.println("DBG 007 SETUP: Display SPI configurated");
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
 
   buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
-  Serial.println("05 SETUP: Button SPI begin.");
+  Serial.println("DBG 008 SETUP: Button SPI configurated");
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  Serial.println("06 SETUP: Encoder rotation pins.");
+  Serial.println("DBG 009 SETUP: Encoder rotation pins configured");
 
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
-  Serial.println("07 SETUP: Encoder SW Debounce");
+  Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 
-  Serial.println("08 SETUP: Time set");
-  Serial.println("0F SETUP: End of setup");
+  Serial.println("DBG 002 SETUP: End of setup");
 }
 
             ///////////////   /////////   /////////   /////////
@@ -340,7 +345,7 @@ void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
 
   if (lastState != currentState) {
-    Serial.print("00 STATE: State change to ");
+    Serial.print("DBG 030 STATE: State change to ");
     Serial.println(SystemState(currentState));
   }
   lastState = currentState;
@@ -355,7 +360,7 @@ void loop() {
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
 
   if (buttonPressed && (now - encoderDebug_timeLastPressed > 250)) {
-    Serial.println("DBG 027 STATE: Encoder Button Detect ");
+    Serial.println("DBG 010 INPUT: Encoder Button Detect");
     encoderDebug_timeLastPressed = now;
   }
 
@@ -374,7 +379,7 @@ void loop() {
 
   static bool timeInitialized = false;
   if (WiFiLight == 1 && !timeInitialized) {
-      Serial.println("95 NETWK: WiFi Connected, starting NTP sync");
+      Serial.println("DBG 095 NETWK: WiFi Connected, starting NTP sync");
       timeUtil.initTime("EST5EDT");
       timeInitialized = true;
   }
@@ -494,7 +499,7 @@ void loop() {
     }
 
     if (buttonDetect(homeButtonPressed, now) && (currentState != KEYBOARD_ENTRY)) {
-      Serial.println("20 INPUT: Home Button Detect");
+      Serial.println("DBG 011 INPUT: Home Button Detect");
       timeLastPressed = now;
       alarmTool.reset();
       timerTool.reset();
@@ -760,8 +765,6 @@ void loop() {
                 currentState = NETWORK_MENU;
                 keyboardMode = 0; 
             } else { 
-                Serial.print("User Entered: ");
-                Serial.println(finalInput.c_str());
                 currentState = CLOCK_CLEAN; 
             }
         }
