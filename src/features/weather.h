@@ -18,6 +18,8 @@ class Weather {
         Weather();
         void begin();
         String getDisplayString();
+        
+        void saveConfig(String api, String lat, String lon); 
 };
 
 #endif

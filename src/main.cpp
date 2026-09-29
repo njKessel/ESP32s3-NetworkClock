@@ -124,6 +124,10 @@ bool eButtonPressed    =  false;
 volatile int menuIndex = 0;                               // Menu index tracking
 int keyboardMode = 0;                                     // Track if you are in a keyboard input
 
+// Weather /////////////////////////////////////////////////
+String tempWeatherApi = "";
+String tempWeatherLat = "";
+
 // Brightness //////////////////////////////////////////////
 uint8_t originalBrightness;                               // Tracks what the current brightness level is
 uint8_t originalBrightnessIndex;                          // Tracks where in the brightness menu it is   
@@ -766,8 +770,8 @@ void loop() {
         break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 3;
-        if (menuIndex > 3) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 4;
+        if (menuIndex > 4) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -807,6 +811,16 @@ void loop() {
             timeLastPressed = now;
             menuTimeout = now;
           }
+        
+        } else if (menuIndex == 4) {
+          displayBuilder(" WEATHER    ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 3;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
         }
         break;
       }
@@ -839,22 +853,39 @@ void loop() {
       case KEYBOARD_ENTRY: {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
 
+        timeLastPressed = now;
+        std::string finalInput = keyboardTool.getEnteredString();
+
         if (buttonDetect(homeButtonPressed, now)) {
-            timeLastPressed = now;
-            std::string finalInput = keyboardTool.getEnteredString();
-            
-            if (keyboardMode == 1) { 
-                networkTool.setTargetSSID(finalInput);
-                keyboardTool.reset();
-                keyboardMode = 2; 
-            } else if (keyboardMode == 2) { 
-                networkTool.setTargetPassword(finalInput);
-                networkTool.connectToTarget();
-                currentState = NETWORK_MENU;
-                keyboardMode = 0; 
-            } else { 
-                currentState = CLOCK_CLEAN; 
-            }
+          if (keyboardMode == 1) { 
+              networkTool.setTargetSSID(finalInput);
+              keyboardTool.reset();
+              keyboardMode = 2; 
+          } else if (keyboardMode == 2) { 
+              networkTool.setTargetPassword(finalInput);
+              networkTool.connectToTarget();
+              currentState = NETWORK_MENU;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 3) {
+              // Done typing API key, move to Latitude
+              tempWeatherApi = String(finalInput.c_str());
+              keyboardTool.reset();
+              keyboardMode = 4;
+          } else if (keyboardMode == 4) {
+              // Done typing Latitude, move to Longitude
+              tempWeatherLat = String(finalInput.c_str());
+              keyboardTool.reset();
+              keyboardMode = 5;
+          } else if (keyboardMode == 5) {
+              // Done typing Longitude. Save everything and return to Settings!
+              String tempWeatherLon = String(finalInput.c_str());
+              weatherTool.saveConfig(tempWeatherApi, tempWeatherLat, tempWeatherLon);
+              
+              currentState = SETTINGS;
+              keyboardMode = 0;
+          } else { 
+              currentState = CLOCK_CLEAN; 
+          }
         }
 
         if (buttonPressed && (now - timeLastPressed > 250)) {

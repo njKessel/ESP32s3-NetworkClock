@@ -1,8 +1,7 @@
-// EXAMPLE SECRETS
 #pragma once
-#define WIFI_SSID "yourSSID"
-#define WIFI_PASSWORD "yourPASSWORD"
 
-#define OWM_API_KEY "00000000000000000000000000000000"
-#define OWM_ZIP "45202"
-#define OWM_COUTNRY "US"
+// Weather API
+#define OWM_USE_SECRETS "no" // Change "no" to "yes" (case sensitive) to override on-device settings with these
+#define OWM_API_KEY "0"
+#define OWM_LAT "0"
+#define OWM_LON "0"
