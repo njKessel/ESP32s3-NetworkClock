@@ -35,6 +35,7 @@ class Clock {
         void onHomeButtonPress();
 
         String getClockDisplay();
+        void setManualTime(int year, int month, int day, int hour, int minute);
 
 };
 
