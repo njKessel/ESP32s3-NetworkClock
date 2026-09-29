@@ -9,7 +9,6 @@
 ////////////////////////////////////////////////////////////
 // INCLUDES ////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
-bool pmrEnable = true;
 // Arduino Headers
 #include <Arduino.h>                                      // Basic arduino functions and classes
 #include <WiFi.h>                                         // Arduino WiFi header/resources
@@ -30,13 +29,6 @@ bool pmrEnable = true;
 #include "selection_util.h"                               // Provides the flashing cursor used in the alarm configuration menu
 #include "time_util.h"                                    // Time formatting for display, handles 24hr/12hr time and padding
 
-volatile int menuIndex = 0;             // INIT MENU INDEX
-volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
-bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
-int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
-int encoderDebug_timeLastPressed = 0; 
-int timeSinceLastPMR = 50000;
-int lastNotifCheck = 0;
 // Features
 #include "features/stopwatch.h"                           // Stopwatch class for the stopwatch feature
 #include "features/alarm.h"                               // Alarm class for the alarm feature
@@ -65,8 +57,7 @@ SetTime setTimeTool;
 ////////////////////////////////////////////////////////////
 // DEBUG ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
-bool debug = true;
-bool verboseDebug = true;
+bool pmrEnable = true;                                    // Enable the per minute report
 
 ////////////////////////////////////////////////////////////
 // STATES //////////////////////////////////////////////////
@@ -290,7 +281,7 @@ void setDisplayBrightness(uint8_t brightnessLevel) {
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
   Serial.println("DBG 001 SETUP: Serial Monitor Online");
-  if (debug == true) {Serial.println("DBG 000 SETUP: Setup begin");}
+  Serial.println("DBG 000 SETUP: Setup begin");
   uint32_t start = millis();
   while (!Serial && (millis() - start < 3000)) {
     delay(10); 
@@ -316,40 +307,40 @@ void setup() {
   timerTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 002 SETUP: Display latch pin.");}
+  Serial.println("DBG 002 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 003 SETUP: Light sense pin.");}
+  Serial.println("DBG 003 SETUP: Light sense pin.");
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");}
+  Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 020 CALIB: Brightness initial callibration.");}
+  Serial.println("DBG 020 CALIB: Brightness initial callibration.");
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 007 SETUP: Display SPI configurated");}
+  Serial.println("DBG 007 SETUP: Display SPI configurated");
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
 
   buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 008 SETUP: Button SPI configurated");}
+  Serial.println("DBG 008 SETUP: Button SPI configurated");
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 009 SETUP: Encoder rotation pins configured");}
+  Serial.println("DBG 009 SETUP: Encoder rotation pins configured");
 
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
-  if (debug == true && verboseDebug == true) {Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");}
+  Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
   Wire.begin(PIN_SDA, PIN_SCL);
   clockTool.begin();
-  if (debug == true) {Serial.println("DBG 002 SETUP: End of setup");}
+  Serial.println("DBG 002 SETUP: End of setup");
 }
 
             ///////////////   /////////   /////////   /////////
@@ -361,6 +352,7 @@ void setup() {
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
   // Per minute report
+  static unsigned long timeSinceLastPMR = 0;
   if(pmrEnable && (now - timeSinceLastPMR > 60000)){
     Serial.println("DBG 000 PMINR | PER MINUTE REPORT");
     Serial.println("DBG 000 PMINR | -----------------");
