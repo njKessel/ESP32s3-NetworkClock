@@ -156,8 +156,12 @@ String Alarm::getDayString() {
 }
 
 bool Alarm::shouldRing(int alarmIndex) {
+    time_t now;
+    time(&now);
     struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) {
+    localtime_r(&now, &timeinfo); 
+
+    if (timeinfo.tm_year < 116) {
         return false;
     }
 

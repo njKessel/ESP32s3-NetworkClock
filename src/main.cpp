@@ -515,31 +515,36 @@ void loop() {
       
     }
 
-    if (currentState != NOTIFICATION) {
-      if (alarmTool.shouldRing(0)) {
-        activeNotification = 0;
-        currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Alarm Notification 0");
-      } else if (alarmTool.shouldRing(1)) {
-        activeNotification = 1;
-        currentState = NOTIFICATION;
-        Serial.println("81 NOTIF: Alarm Notification 1");
-      } else if (alarmTool.shouldRing(2)) {
-        activeNotification = 2;
-        currentState = NOTIFICATION;
-        Serial.println("82 NOTIF: Alarm Notification 2");
-      } else if (timerTool.shouldRing(1)) {
-        activeNotification = 3;
-        currentState = NOTIFICATION;
-        Serial.println("83 NOTIF: Timer Notification 1");
-      } else if (timerTool.shouldRing(2)) {
-        activeNotification = 4;
-        currentState = NOTIFICATION;
-        Serial.println("84 NOTIF: Timer Notification 2");
-      } else if (timerTool.shouldRing(3)) {
-        activeNotification = 5;
-        currentState = NOTIFICATION;
-        Serial.println("85 NOTIF: Timer Notification 3");
+    static unsigned long lastNotifCheck = 0;
+    if (now - lastNotifCheck >= 1000) {
+      lastNotifCheck = now;
+
+      if (currentState != NOTIFICATION) {
+        if (alarmTool.shouldRing(0)) {
+          activeNotification = 0;
+          currentState = NOTIFICATION;
+          Serial.println("80 NOTIF: Alarm Notification 0");
+        } else if (alarmTool.shouldRing(1)) {
+          activeNotification = 1;
+          currentState = NOTIFICATION;
+          Serial.println("81 NOTIF: Alarm Notification 1");
+        } else if (alarmTool.shouldRing(2)) {
+          activeNotification = 2;
+          currentState = NOTIFICATION;
+          Serial.println("82 NOTIF: Alarm Notification 2");
+        } else if (timerTool.shouldRing(1)) {
+          activeNotification = 3;
+          currentState = NOTIFICATION;
+          Serial.println("83 NOTIF: Timer Notification 1");
+        } else if (timerTool.shouldRing(2)) {
+          activeNotification = 4;
+          currentState = NOTIFICATION;
+          Serial.println("84 NOTIF: Timer Notification 2");
+        } else if (timerTool.shouldRing(3)) {
+          activeNotification = 5;
+          currentState = NOTIFICATION;
+          Serial.println("85 NOTIF: Timer Notification 3");
+        }
       }
     }
 

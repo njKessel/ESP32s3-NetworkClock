@@ -42,7 +42,7 @@ void initFontTable() {
     fontTable[':'] =                 SEG_C |         SEG_E;
     fontTable[';'] =                 SEG_C |                                                                                         SEG_T;
     fontTable['='] =                                 SEG_E | SEG_F |                                         SEG_P |                         SEG_U;
-    fontTable['?'] = SEG_A | SEG_B | SEG_C |                                                                         SEG_S |                 SEG_U;
+    fontTable['?'] = SEG_A | SEG_B | SEG_C |                                                                 SEG_P |  SEG_S;
     fontTable['@'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G | SEG_H |                         SEG_P;
     fontTable['['] = SEG_A |                                 SEG_F | SEG_G | SEG_H;
     fontTable['\\']=                                                                 SEG_K |                 SEG_R;
