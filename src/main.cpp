@@ -14,6 +14,7 @@
 #include <Arduino.h>                                      // Basic arduino functions and classes
 #include <WiFi.h>                                         // Arduino WiFi header/resources
 #include <SPI.h>                                          // Arduino SPI header, used for the button panel and 74HC595 display
+#include <Wire.h>                                         // I2C header for communitaction with the RTC
 
 // ESP32 Headers
 #include <esp_timer.h>                                    // Used for encoder debounce in setupEncoderTimer
@@ -131,6 +132,8 @@ constexpr int PIN_SCK           =       12;               // SPI clock for the d
 // Peripherals /////////////////////////////////////////////
 constexpr int PIN_LIGHT         =       7;                // Phototransistor
 constexpr int PIN_MFP           =       8;                // External RTC 
+constexpr int PIN_SCL           =       5;                // External RTC
+constexpr int PIN_SDA           =       38;               // External RTC
 
 // Encoder /////////////////////////////////////////////////
 constexpr int PIN_ENCODER_PUSH  =       15;               // Encoder push button
@@ -331,7 +334,8 @@ void setup() {
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
-
+  Wire.begin(PIN_SDA, PIN_SCL);
+  clockTool.begin();
   if (debug == true) {Serial.println("DBG 002 SETUP: End of setup");}
 }
 
