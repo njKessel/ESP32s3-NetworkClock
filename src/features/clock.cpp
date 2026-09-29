@@ -64,11 +64,6 @@ String Clock::getClockDisplay() {
         struct tm ti;
         localtime_r(&now, &ti); 
         
-        if (ti.tm_year < 116) {
-            // Serial.println("DBG 060 CLOCK: Waiting for NTP sync");
-            return "   TIME?    ";
-        }
-        
         return timeUtil.formatTime(ti, hour24);
         
     } else if (page == 1) {
