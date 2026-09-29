@@ -41,6 +41,7 @@
 
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
+#include "settings/set_time.h"                            // Manual time configuration class
 
 TimeUtil timeUtil;
 Stopwatch stopwatchTool;
@@ -52,6 +53,7 @@ Clock clockTool;
 Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
+SetTime setTimeTool;
 ////////////////////////////////////////////////////////////
 // DEBUG ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -72,7 +74,8 @@ enum SystemState {
   SETTINGS,                                               // Settings submenu, contains TZ_SELECT, BRIGHTNESS, and NETWORK_MENU
   BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
-  NETWORK_MENU                                            // Network scan and config menu
+  NETWORK_MENU,                                           // Network scan and config menu
+  MANUAL_TIME
 };
 SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
@@ -466,6 +469,14 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == MANUAL_TIME) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+            setTimeTool.onKnobTurn(direction);
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
@@ -490,7 +501,7 @@ void loop() {
 
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
-    if (currentState == ALARM) {timeoutDuration = 20000;}
+    if (currentState == ALARM || currentState == MANUAL_TIME) {timeoutDuration = 20000;}
     else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
     else if (currentState == SETTINGS) {timeoutDuration = 20000;}
 
@@ -722,8 +733,8 @@ void loop() {
         break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 2;
-        if (menuIndex > 2) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 3;
+        if (menuIndex > 3) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -754,9 +765,44 @@ void loop() {
             timeLastPressed = now;
             menuTimeout = now;
           }
+
+        } else if (menuIndex == 3) {
+          displayBuilder(" SET TIME   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = MANUAL_TIME;
+            setTimeTool.reset();
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
         }
         break;
       }
+      case MANUAL_TIME: {
+        displayBuilder((char*)setTimeTool.getDisplayString().c_str(), toDisplayWords, true);
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+            timeLastPressed = now;
+            menuTimeout = now;
+            
+            if (setTimeTool.onButtonPress()) { 
+                clockTool.setManualTime(
+                    setTimeTool.getYear(),
+                    setTimeTool.getMonth(),
+                    setTimeTool.getDay(),
+                    setTimeTool.getHour(),
+                    setTimeTool.getMinute()
+                );
+                currentState = SETTINGS;
+            }
+        }
+        
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            currentState = SETTINGS;
+        }
+        break;
+      }
+
       case KEYBOARD_ENTRY: {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
 

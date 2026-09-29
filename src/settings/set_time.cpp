@@ -5,7 +5,7 @@ SetTime::SetTime() {
     editField = 1;
 }
 
-// FACTORY RESET ///////////////////////////////////////////
+// MENU RESET //////////////////////////////////////////////
 void SetTime::reset() {
     time_t now;
     time(&now);
