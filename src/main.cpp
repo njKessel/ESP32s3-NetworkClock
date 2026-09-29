@@ -483,10 +483,10 @@ void loop() {
 
   // 2. LOGIC (50ms gate)
   static unsigned long lastLogic = 0;                                                                 // INIT LAST LOGIC CHAGE
-  int logicRefreshSpeed = 50;
+  static int logicRefreshSpeed = 50;
 
   if (currentState == STOPWATCH) {
-    Serial.println("DBG 061 REFRE: Logic refresh timing changed to 20ms");
+    if (logicRefreshSpeed == 50) {Serial.println("DBG 061 REFRE: Logic refresh timing changed to 20ms");}
     logicRefreshSpeed = 20; 
   } else {
     logicRefreshSpeed = 50; 
