@@ -185,14 +185,15 @@ void IRAM_ATTR onTimer(void* arg) {                       // Store in internal R
   }
 }
 
+// Interrupt Timer /////////////////////////////////////////
 void setupEncoderTimer() {                                                      
-  const esp_timer_create_args_t periodic_timer_args = {                         // TIMER SETTINGS
-    .callback = &onTimer,                                                       // CREATE A FUNCTION FOR THE TIMER TO FORCE INTERUPT 
-    .name = "encoder_timer"                                                     // TIMER NAME
+  const esp_timer_create_args_t periodic_timer_args = {
+    .callback = &onTimer,                                 // Call the onTimer function every time the timer ticks
+    .name = "encoder_timer"
   };
-  esp_timer_handle_t encoder_timer;                                             // TIMER ID
-  esp_timer_create(&periodic_timer_args, &encoder_timer);                       // CREATES TIMER IN MEMORY USING SETTINGS AND ID
-  esp_timer_start_periodic(encoder_timer, 1000);                                // STARTS TIMER BY ID AND W/O STOP (PERIODIC)
+  esp_timer_handle_t encoder_timer;
+  esp_timer_create(&periodic_timer_args, &encoder_timer); // Store the handle and timer parameters in memory
+  esp_timer_start_periodic(encoder_timer, 1000);          // Start the timer, running forever, triggering once per millisecond
 }
 
 ////////////////////////////////////////////////////////////
