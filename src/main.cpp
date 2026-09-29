@@ -38,6 +38,7 @@
 #include "features/clock.h"                               // Clock class for the clock page's logic 
 #include "features/keyboard.h"                            // Text input class, primarily used for networking SSID/Password inputs
 #include "features/networking.h"                          // Networking class for setting up WiFi
+#include "features/weather.h"
 
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
@@ -54,6 +55,7 @@ Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
 SetTime setTimeTool;
+Weather weatherTool;
 ////////////////////////////////////////////////////////////
 // DEBUG ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -74,7 +76,8 @@ enum SystemState {
   BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
   NETWORK_MENU,                                           // Network scan and config menu
-  MANUAL_TIME
+  MANUAL_TIME,                                            // Manual time config screen
+  WEATHER_SCREEN                                          // Weather screen
 };
 SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
@@ -589,8 +592,21 @@ void loop() {
             clockTool.onModButtonPress();
             menuTimeout = now;
           }
+        if (buttonDetect(eButtonPressed, now)) {      // <--- ADD THIS
+            timeLastPressed = now;
+            menuTimeout = now;
+            currentState = WEATHER_SCREEN;
+        }
         break;
-
+      case WEATHER_SCREEN:
+        displayBuilder((char*)weatherTool.getDisplayString().c_str(), toDisplayWords, false);
+        
+        // Auto-exit after 5 seconds, or if they press the encoder button/home button
+        if ((now - menuTimeout > 5000) || buttonDetect(homeButtonPressed, now) || (buttonPressed && (now - timeLastPressed > 250))) {
+            timeLastPressed = now;
+            currentState = CLOCK_CLEAN;
+        }
+        break;
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
         if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
         if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
@@ -606,6 +622,11 @@ void loop() {
             timeLastPressed = now;
             clockTool.onModButtonPress();
             menuTimeout = now;
+          }
+          if (buttonDetect(eButtonPressed, now)) {      // <--- ADD THIS
+            timeLastPressed = now;
+            menuTimeout = now;
+            currentState = WEATHER_SCREEN;
           }
         } else if (menuIndex == 1) {
           displayBuilder(" STOPWATCH  ", toDisplayWords, true);
