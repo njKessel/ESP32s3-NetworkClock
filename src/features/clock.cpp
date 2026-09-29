@@ -3,8 +3,10 @@
 #include <time.h>
 #include "time_util.h"
 #include "timezone.h"
+#include <sys/time.h>
 
 extern TimeUtil timeUtil;
+extern volatile bool globalWiFiConnected;
 
 Clock::Clock() {
     page = 0;
@@ -20,6 +22,29 @@ Clock::Clock() {
 
     latch = false;
     editMode = false;
+
+    lastRTCSync = 0;
+    rtcInitialized = false;
+}
+
+void Clock::begin() {
+    if (RTC.begin()) {
+        rtcInitialized = true;
+        RTC.deviceStart(); 
+
+        DateTime rtcNow = RTC.now();
+        if (rtcNow.year() >= 2024) {
+            struct timeval tv;
+            tv.tv_sec = rtcNow.unixtime();
+            tv.tv_usec = 0;
+            settimeofday(&tv, NULL);
+            Serial.println("DBG 062 CLOCK: Loaded time from RTC on boot");
+        } else {
+            Serial.println("DBG 063 CLOCK: RTC time invalid, waiting for NTP");
+        }
+    } else {
+        Serial.println("DBG 064 CLOCK: RTC not found on I2C bus");
+    }
 }
 
 void Clock::onButtonPress() {
@@ -63,6 +88,31 @@ String Clock::getClockDisplay() {
         
         struct tm ti;
         localtime_r(&now, &ti); 
+        
+        if (rtcInitialized) {
+            unsigned long currentMillis = millis();
+            if (currentMillis - lastRTCSync >= 300000) { // 300,000 ms = 5 minutes
+                lastRTCSync = currentMillis;
+
+                if (globalWiFiConnected && ti.tm_year >= 116) {
+                    // Wi-Fi is active and NTP is synced: Update RTC from ESP32
+                    // extract the UTC time so timezones don't corrupt the RTC
+                    struct tm *utc_ti = gmtime(&now);
+                    RTC.adjust(DateTime(utc_ti->tm_year + 1900, utc_ti->tm_mon + 1, utc_ti->tm_mday, utc_ti->tm_hour, utc_ti->tm_min, utc_ti->tm_sec));
+                    Serial.println("DBG 065 CLOCK: Synced hardware RTC to NTP time");
+                } 
+                else if (!globalWiFiConnected) {
+                    DateTime rtcNow = RTC.now();
+                    if (rtcNow.year() >= 2024) {
+                        struct timeval tv;
+                        tv.tv_sec = rtcNow.unixtime();
+                        tv.tv_usec = 0;
+                        settimeofday(&tv, NULL);
+                        Serial.println("DBG 066 CLOCK: Corrected ESP32 clock from RTC");
+                    }
+                }
+            }
+        }
         
         return timeUtil.formatTime(ti, hour24);
         
