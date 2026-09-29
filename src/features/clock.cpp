@@ -150,3 +150,26 @@ String Clock::getClockDisplay() {
    }
    return "";
 }
+
+void Clock::setManualTime(int year, int month, int day, int hour, int minute) {
+    struct tm ti;
+    ti.tm_year = year - 1900;
+    ti.tm_mon = month - 1;
+    ti.tm_mday = day;
+    ti.tm_hour = hour;
+    ti.tm_min = minute;
+    ti.tm_sec = 0;
+    ti.tm_isdst = -1;
+
+    time_t t = mktime(&ti);
+    struct timeval tv;
+    tv.tv_sec = t;
+    tv.tv_usec = 0;
+    settimeofday(&tv, NULL);
+
+    if (rtcInitialized) {
+        struct tm *utc_ti = gmtime(&t);
+        RTC.adjust(DateTime(utc_ti->tm_year + 1900, utc_ti->tm_mon + 1, utc_ti->tm_mday, utc_ti->tm_hour, utc_ti->tm_min, utc_ti->tm_sec));
+        Serial.println("DBG 067 CLOCK: Manual time saved to RTC");
+    }
+}
