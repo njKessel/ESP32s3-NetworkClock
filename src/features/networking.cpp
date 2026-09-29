@@ -153,20 +153,15 @@ NetworkMenuState Networking::getMenuState() {
 
 std::string Networking::getDisplayString() {
     std::string text = "";
-    std::string output = "";
+    int targetLength = 12; 
 
     switch (menuState) {
-        case NET_INIT:
-            text = "FIND NET";
-            break;
-            
-        case NET_SCANNING:
-            text = "SCANNING";
-            break;
-            
+        case NET_INIT:          text = "FIND NET"; break;
+        case NET_SCANNING:      text = "SCANNING"; break;
         case NET_SELECT_SSID:
             if (!scannedNetworks.empty()) {
                 text = scannedNetworks[listIndex];
+                
                 if (text.length() > 8) {
                     text = text.substr(0, 8);
                 }
@@ -174,28 +169,17 @@ std::string Networking::getDisplayString() {
                 text = "NO NETS";
             }
             break;
-            
-        case NET_CONNECTING:
-            text = "CONNECT";
-            break;
-            
-        case NET_CONNECTED:
-            text = "SUCCESS";
-            break;
-            
-        case NET_FAILED:
-            text = "FAILED";
-            break;
+        case NET_CONNECTING:    text = "CONNECTING"; break;
+        case NET_CONNECTED:     text = "SUCCESS"; break;
+        case NET_FAILED:        text = "FAILED"; break;
     }
 
-    int padding = 8 - text.length();
+    int padding = targetLength - text.length();
     if (padding > 0) {
         int padLeft = padding / 2;
         int padRight = padding - padLeft;
         text = std::string(padLeft, ' ') + text + std::string(padRight, ' ');
     }
 
-    output = "  " + text + "  ";
-
-    return output;
+    return text;
 }

@@ -66,7 +66,8 @@ String Clock::getClockDisplay() {
         
         if (ti.tm_year < 116) {
             //Serial.println("C1 CLOCK: Waiting for NTP sync");
-            return "  NO TIME   ";
+            
+            return "   TIME?    ";
         }
         
         return timeUtil.formatTime(ti, hour24);

@@ -770,12 +770,31 @@ void loop() {
       }
 
       case NETWORK_MENU: {
-        displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, true);
+        NetworkMenuState netState = networkTool.getMenuState();
+        
+        // Only show the < > navigation arrows if we are actively selecting a network
+        bool showArrows = (netState == NET_SELECT_SSID);
 
+        displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, showArrows);
+
+        // Auto-Exit to Clock when Connected OR Failed
+        static unsigned long statusTimer = 0;
+        if (netState == NET_CONNECTED || netState == NET_FAILED) {
+            if (statusTimer == 0) statusTimer = now;
+            if (now - statusTimer > 2000) {
+                if (netState == NET_FAILED) {
+                    networkTool.reset();
+                }
+                currentState = CLOCK_CLEAN;
+            }
+        } else {
+            statusTimer = 0;
+        }
+
+        // Handle button inputs
         if (buttonPressed && (now - timeLastPressed > 250)) {
             timeLastPressed = now;
             menuTimeout = now;
-            NetworkMenuState netState = networkTool.getMenuState();
             
             if (netState == NET_INIT || netState == NET_FAILED || netState == NET_CONNECTED) {
                 networkTool.onButtonPress();
