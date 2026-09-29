@@ -313,6 +313,7 @@ void setup() {
   Serial.println("DBG 002 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
   Serial.println("DBG 003 SETUP: Light sense pin.");
+  weatherTool.begin();
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
