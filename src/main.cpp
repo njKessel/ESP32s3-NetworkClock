@@ -14,6 +14,7 @@ bool pmrEnable = true;
 #include <Arduino.h>                                      // Basic arduino functions and classes
 #include <WiFi.h>                                         // Arduino WiFi header/resources
 #include <SPI.h>                                          // Arduino SPI header, used for the button panel and 74HC595 display
+#include <Wire.h>                                         // I2C header for communitaction with the RTC
 
 // ESP32 Headers
 #include <esp_timer.h>                                    // Used for encoder debounce in setupEncoderTimer
@@ -48,6 +49,7 @@ int lastNotifCheck = 0;
 
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
+#include "settings/set_time.h"                            // Manual time configuration class
 
 TimeUtil timeUtil;
 Stopwatch stopwatchTool;
@@ -59,6 +61,7 @@ Clock clockTool;
 Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
+SetTime setTimeTool;
 ////////////////////////////////////////////////////////////
 // DEBUG ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -79,7 +82,8 @@ enum SystemState {
   SETTINGS,                                               // Settings submenu, contains TZ_SELECT, BRIGHTNESS, and NETWORK_MENU
   BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
-  NETWORK_MENU                                            // Network scan and config menu
+  NETWORK_MENU,                                           // Network scan and config menu
+  MANUAL_TIME
 };
 SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
@@ -101,7 +105,9 @@ bool hour24;                                              // Boolean for handlin
 int activeNotification = -1;                              // Set no current notifications
 
 // Indicator Light Status //////////////////////////////////
-int WiFiLight = 0;                                        // Default WiFi indicator to off
+int WiFiLight =  0;                                       // Default WiFi indicator to off
+int alarmLight = 0;                                       // Default alarm light to off
+int timerLight = 0;                                       // Default timer light to off
 
 // Encoder /////////////////////////////////////////////////
 volatile long encoderRawCount = 0;                        // Init the number of pulses from the PEC11R
@@ -139,6 +145,8 @@ constexpr int PIN_SCK           =       12;               // SPI clock for the d
 // Peripherals /////////////////////////////////////////////
 constexpr int PIN_LIGHT         =       7;                // Phototransistor
 constexpr int PIN_MFP           =       8;                // External RTC 
+constexpr int PIN_SCL           =       5;                // External RTC
+constexpr int PIN_SDA           =       38;               // External RTC
 
 // Encoder /////////////////////////////////////////////////
 constexpr int PIN_ENCODER_PUSH  =       15;               // Encoder push button
@@ -185,99 +193,99 @@ void IRAM_ATTR onTimer(void* arg) {                       // Store in internal R
   }
 }
 
+// Interrupt Timer /////////////////////////////////////////
 void setupEncoderTimer() {                                                      
-  const esp_timer_create_args_t periodic_timer_args = {                         // TIMER SETTINGS
-    .callback = &onTimer,                                                       // CREATE A FUNCTION FOR THE TIMER TO FORCE INTERUPT 
-    .name = "encoder_timer"                                                     // TIMER NAME
+  const esp_timer_create_args_t periodic_timer_args = {
+    .callback = &onTimer,                                 // Call the onTimer function every time the timer ticks
+    .name = "encoder_timer"
   };
-  esp_timer_handle_t encoder_timer;                                             // TIMER ID
-  esp_timer_create(&periodic_timer_args, &encoder_timer);                       // CREATES TIMER IN MEMORY USING SETTINGS AND ID
-  esp_timer_start_periodic(encoder_timer, 1000);                                // STARTS TIMER BY ID AND W/O STOP (PERIODIC)
+  esp_timer_handle_t encoder_timer;
+  esp_timer_create(&periodic_timer_args, &encoder_timer); // Store the handle and timer parameters in memory
+  esp_timer_start_periodic(encoder_timer, 1000);          // Start the timer, running forever, triggering once per millisecond
 }
 
 ////////////////////////////////////////////////////////////
 // BUTTON LOGIC ////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
-uint8_t pullButtonStates() {
-  digitalWrite(PIN_LATCH_BUTTON, LOW);
+// Button States Check /////////////////////////////////////
+uint8_t pullButtonStates() {                              // Pull all of the buttons current status from the 74HC165 
+  digitalWrite(PIN_LATCH_BUTTON, LOW);                    // Injest button states to the register
   delayMicroseconds(1);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
   delayMicroseconds(1);
   
-  buttonSPI.beginTransaction(btSettings);
+  buttonSPI.beginTransaction(btSettings);                 // Read register data
   uint8_t buttonStates = buttonSPI.transfer(0);
   buttonSPI.endTransaction();
   return buttonStates; 
 }
 
+// Check a Button //////////////////////////////////////////
 bool checkButton(uint8_t buttonStates, int bitIndex) {
-  return (buttonStates & (1 << bitIndex)) != 0;
+  return (buttonStates & (1 << bitIndex)) != 0;           
 }
 
-bool buttonDetect(bool buttonPressed, unsigned long now) {
+// Display Data Refresh ////////////////////////////////////
+bool buttonDetect(bool buttonPressed, unsigned long now) {// Software debounced button detection
   if (buttonPressed && (now - timeLastPressed > 250)) {
     return true; 
   }
   return false;
 }
+
 ////////////////////////////////////////////////////////////
 // Display Handling ////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
-static void latchPulse() {                                                    
-  digitalWrite(PIN_LATCH, HIGH);                                                // SET LATCH PIN HIGH
-  delayMicroseconds(1);                                                         // WAIT
-  digitalWrite(PIN_LATCH, LOW);                                                 // SET LATCH PIN LOW
-  delayMicroseconds(1);                                                         // WAIT TO PREVENT BEING TOO FAST
+// Display Data Refresh ////////////////////////////////////
+static void latchPulse() {                                // Refresh the data in the registers                             
+  digitalWrite(PIN_LATCH, HIGH);                          // Output current data to display
+  delayMicroseconds(1);
+  digitalWrite(PIN_LATCH, LOW);                           // Lock new data from being sent to the display
+  delayMicroseconds(1);
 }
 
+// Display Data ransfer ///////////////////////////////////
 void spiWrite64(uint64_t data) {  
-  uint32_t high = (uint32_t)(data >> 32);                                       // BREAK HALF OF THE 64 BITS OFF
-  uint32_t low = (uint32_t)(data & 0xFFFFFFFF);                                 // BREAK HALF OF THE 64 BITS OFF
+  uint32_t high = (uint32_t)(data >> 32);                 // Break the MSB component off of the data
+  uint32_t low = (uint32_t)(data & 0xFFFFFFFF);           // Break the LSB component off of the data
 
-
-  digitalWrite(PIN_LATCH, LOW);                                                 // DO NOT DISPLAY DATA
-  SPI.beginTransaction(srSettings);                                             // OPEN SPI TRANSMISSION
-  SPI.transfer32(high);                                                         // SEND MSB PART
-  SPI.transfer32(low);                                                          // SEND LSB PART
-  SPI.endTransaction();                                                         // CLOSE SPI TRANSMISSION
-  asm volatile("nop;nop;nop;nop");                                              // SHORT DELAY USING ASM NO-OPERATION
-  latchPulse();                                                                 // LATCH SHIFT REGISTERS
+  digitalWrite(PIN_LATCH, LOW);                           // Hide new data from the display
+  SPI.beginTransaction(srSettings);
+  SPI.transfer32(high);                                   // Send MSB data
+  SPI.transfer32(low);                                    // Send LSB data
+  SPI.endTransaction();
+  asm volatile("nop;nop;nop;nop");                        // Very short delay to allow shift registers to ingest
+  latchPulse();                                           // Refresh data thats being sent to the display
 }
 
-// --- RENDER FUNCTION ---
+// Display Render //////////////////////////////////////////
 void renderDisplay(uint64_t* currentBuffer) {
-  for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
-    spiWrite64(currentBuffer[i]);                                               // WRITE THE DATA FOR EACH CHAR
-    delayMicroseconds(180);                                                     // MUX REFRESH RATE
+  for (int i = 0; i < 12; i++) {                          // Loop through all of the characters (multiplex)
+    spiWrite64(currentBuffer[i]);                         // Write current characters data (its anode and its char's segments)
+    delayMicroseconds(180);                               // Multiplexing speed (refresh rate)
     spiWrite64(0);  
-    delayMicroseconds(20);
+    delayMicroseconds(20);                                // Blanking interval
   }
 }
 
+// Brightness //////////////////////////////////////////////
 void setDisplayBrightness(uint8_t brightnessLevel) {
-    uint8_t hardwareDuty = 255 - brightnessLevel; 
+    uint8_t hardwareDuty = 255 - brightnessLevel;
 
-    ledcWrite(0, hardwareDuty); 
+    ledcWrite(0, hardwareDuty);                           // Send current duty cycle to PWM control
 }
 
-void displayBufferTime(bool showArrows) {
-  if (lastEncState) {hour24 = true;} else {hour24 = false;};
-
-  struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
-
-  if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)(timeUtil.formatTime(timeinfo, hour24)).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
-  }
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             /////////   /////////   /////////   ///   ///   /////////
             ///         ///            ///      ///   ///   ///   ///
 //////////  /////////   /////////      ///      ///   ///   /////////   ////////////////////////////////////////////////////////
                   ///   ///            ///      ///   ///   ///
             /////////   /////////      ///      /////////   ///
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
@@ -339,7 +347,8 @@ void setup() {
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
-
+  Wire.begin(PIN_SDA, PIN_SCL);
+  clockTool.begin();
   if (debug == true) {Serial.println("DBG 002 SETUP: End of setup");}
 }
 
@@ -480,16 +489,24 @@ void loop() {
             lastEncoderRead = movement;
         }
     }
+
+    else if (currentState == MANUAL_TIME) {
+        if (movement != lastEncoderRead) {
+            int direction = (movement > lastEncoderRead) ? 1 : -1;
+            setTimeTool.onKnobTurn(direction);
+            lastEncoderRead = movement;
+        }
+    }
     
     menuTimeout = now;
   }
 
   // 2. LOGIC (50ms gate)
   static unsigned long lastLogic = 0;                                                                 // INIT LAST LOGIC CHAGE
-  int logicRefreshSpeed = 50;
+  static int logicRefreshSpeed = 50;
 
   if (currentState == STOPWATCH) {
-    Serial.println("DBG 061 REFRE: Logic refresh timing changed to 20ms");
+    if (logicRefreshSpeed == 50) {Serial.println("DBG 061 REFRE: Logic refresh timing changed to 20ms");}
     logicRefreshSpeed = 20; 
   } else {
     logicRefreshSpeed = 50; 
@@ -503,7 +520,7 @@ void loop() {
     }
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
-    if (currentState == ALARM) {timeoutDuration = 20000;}
+    if (currentState == ALARM || currentState == MANUAL_TIME) {timeoutDuration = 20000;}
     else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
     else if (currentState == SETTINGS) {timeoutDuration = 20000;}
     
@@ -532,8 +549,10 @@ void loop() {
       }
     }
 
-
+    static unsigned long lastNotifCheck = 0;
     if (now - lastNotifCheck >= 1000) {
+      lastNotifCheck = now;
+
       if (currentState != NOTIFICATION) {
         if (alarmTool.shouldRing(0)) {
           activeNotification = 0;
@@ -733,8 +752,8 @@ void loop() {
         break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 2;
-        if (menuIndex > 2) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 3;
+        if (menuIndex > 3) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -765,9 +784,44 @@ void loop() {
             timeLastPressed = now;
             menuTimeout = now;
           }
+
+        } else if (menuIndex == 3) {
+          displayBuilder(" SET TIME   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = MANUAL_TIME;
+            setTimeTool.reset();
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
         }
         break;
       }
+      case MANUAL_TIME: {
+        displayBuilder((char*)setTimeTool.getDisplayString().c_str(), toDisplayWords, true);
+
+        if (buttonPressed && (now - timeLastPressed > 250)) {
+            timeLastPressed = now;
+            menuTimeout = now;
+            
+            if (setTimeTool.onButtonPress()) { 
+                clockTool.setManualTime(
+                    setTimeTool.getYear(),
+                    setTimeTool.getMonth(),
+                    setTimeTool.getDay(),
+                    setTimeTool.getHour(),
+                    setTimeTool.getMinute()
+                );
+                currentState = SETTINGS;
+            }
+        }
+        
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            currentState = SETTINGS;
+        }
+        break;
+      }
+
       case KEYBOARD_ENTRY: {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
 

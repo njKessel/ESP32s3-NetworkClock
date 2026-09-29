@@ -3,9 +3,13 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <MCP7940.h>
 
 class Clock {
     private:
+        MCP7940_Class RTC;
+        unsigned long lastRTCSync;
+        bool rtcInitialized;
 
         bool hour24;
         bool nav;
@@ -24,12 +28,14 @@ class Clock {
         bool editMode;
     public:
         Clock();
-
+        
+        void begin();
         void onButtonPress();
         void onModButtonPress();
         void onHomeButtonPress();
 
         String getClockDisplay();
+        void setManualTime(int year, int month, int day, int hour, int minute);
 
 };
 
