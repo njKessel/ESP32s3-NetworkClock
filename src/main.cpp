@@ -274,7 +274,7 @@ void displayBufferTime(bool showArrows) {
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
   Serial.println("DBG 001 SETUP: Serial Monitor Online");
-  Serial.println("DBG 000 SETUP: Setup begin");
+  if (debug == true) {Serial.println("DBG 000 SETUP: Setup begin");}
   uint32_t start = millis();
   while (!Serial && (millis() - start < 3000)) {
     delay(10); 
@@ -284,7 +284,7 @@ void setup() {
 
   pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
-    Serial.println("DBG XXX RESET: Factory reset");
+    Serial.println("DBG 0F0 RESET: Factory reset");
     displayBuilder(" RESETTING  ", toDisplayWords, false);
     
     alarmTool.begin();      
@@ -300,39 +300,39 @@ void setup() {
   timerTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  Serial.println("DBG 002 SETUP: Display latch pin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 002 SETUP: Display latch pin.");}
   pinMode(PIN_LIGHT, ANALOG);
-  Serial.println("DBG 003 SETUP: Light sense pin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 003 SETUP: Light sense pin.");}
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
-  Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");}
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
-  Serial.println("DBG 020 CALIB: Brightness initial callibration.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 020 CALIB: Brightness initial callibration.");}
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
-  Serial.println("DBG 007 SETUP: Display SPI configurated");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 007 SETUP: Display SPI configurated");}
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
 
   buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
-  Serial.println("DBG 008 SETUP: Button SPI configurated");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 008 SETUP: Button SPI configurated");}
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  Serial.println("DBG 009 SETUP: Encoder rotation pins configured");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 009 SETUP: Encoder rotation pins configured");}
 
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
-  Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");}
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 
-  Serial.println("DBG 002 SETUP: End of setup");
+  if (debug == true) {Serial.println("DBG 002 SETUP: End of setup");}
 }
 
             ///////////////   /////////   /////////   /////////
