@@ -13,6 +13,7 @@ class SetTime {
         int sDay;
         int sHour;
         int sMinute;
+        int sSecond;
         
         selectionUtility selector;
 
