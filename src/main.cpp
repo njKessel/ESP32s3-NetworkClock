@@ -1,84 +1,33 @@
 /*
-ESP32 NETWORK CLOCK             NATHANIEL KESSEL
-WORK IN PROGRESS                ESP32-S3
+  PROJECT:      ESP32 Network Clock
+  AUTHOR:       Nathaniel Kessel
+  DEVICE:       ESP32-S3
+  DATE:         2026-09-28
+  VERSION:      pre-release
 */
 
-#include <Arduino.h>          // ARDUINO      
-#include <WiFi.h>             // WIFI
-#include <SPI.h>              // SPI FOR 74HC595
-#include <time.h>             // TIME FUNCTIONS
-#include <esp_timer.h>        // FOR DEBOUNCE (HARDWARE TIMER)
+////////////////////////////////////////////////////////////
+// INCLUDES ////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+bool pmrEnable = true;
+// Arduino Headers
+#include <Arduino.h>                                      // Basic arduino functions and classes
+#include <WiFi.h>                                         // Arduino WiFi header/resources
+#include <SPI.h>                                          // Arduino SPI header, used for the button panel and 74HC595 display
 
-// #include "secrets.h"          // WIFI CRED          
-#include "display_font.h"     // CHAR DISPLAY HANDLER
-#include "selection_util.h"   // FLASHING CURSOR
-#include "time_util.h"        // TIME INIT AND FORMAT
+// ESP32 Headers
+#include <esp_timer.h>                                    // Used for encoder debounce in setupEncoderTimer
 
-#include "features/stopwatch.h"        // STOPWATCH CLASS
-#include "features/alarm.h"
-#include "features/timezone.h"
-#include "features/notification.h"
-#include "features/timer.h"
-#include "features/clock.h"
-#include "features/keyboard.h"
-#include "features/networking.h"
-
-#include "settings/brightness.h"
+// C++ Libraries
+#include <string>                                         // Used for routing keyboard output
 
 #include <string>
-// --- DEBUG FUNCTIONS ---
-bool pmrEnable = true;
+// My Headers //////////////////////////////////////////////
 
-// --- STATE MACHINE ---
-enum SystemState {
-  CLOCK_CLEAN,     // CLOCK WITHOUT NAVIGATON
-  NAV_MODE,        // MENU WITH NAVIGATION ARROWS, IND 0 IS CLOCK + NAV, IND 1 IS TIME ZONE
-  TZ_SELECT,      // TIME ZONE MENU
-  STOPWATCH,
-  ALARM,
-  MODE_TIMER,
-  NOTIFICATION,
-  SETTINGS,
-  BRIGHTNESS,
-  KEYBOARD_ENTRY,
-  NETWORK_MENU
-};
-
-SystemState currentState = CLOCK_CLEAN; // DEFAULT TO BASIC CLOCK
-SystemState lastState = currentState;
-unsigned long menuTimeout = 0;          // INIT MENU TIMEOUT
-
-// --- GLOBALS ---
-uint64_t toDisplayWords[12];            // INIT ARRAY FOR THE PATTERNS SENT TO THE SHIFT REGISTERS
-unsigned long lastUpdate = 0;           // INIT TIME SINCE THE LAST SCREEN MUX
-bool hour24;
-int activeNotification = -1;
-
-// --- PIN DEFINITIONS ---
-constexpr int PIN_COPI  = 13;           // SPI SERIAL
-constexpr int PIN_LATCH = 6;            // SPI RCLK
-constexpr int PIN_OE    = 4;            // 74HC595 OUTPUT ENABLE (BRIGHTNESS VIA PWM)
-constexpr int PIN_SCK   = 12;           // SPI CLOCK
-
-constexpr int PIN_LIGHT = 7;            // LIGHT SENSOR
-constexpr int PIN_MFP   = 8;
-constexpr int PIN_SCL   = 5;
-constexpr int PIN_SDA   = 38;
-
-int WiFiLight = 0;
-
-// --- ENCODER ---
-constexpr int PIN_ENCODER_PUSH = 15;     // PIN FOR PRESSING ENCODER
-constexpr int PIN_ENCODER_A = 9;        // PIN A ON ENCODER
-constexpr int PIN_ENCODER_B = 10;       // PIN B ON ENCODER
-
-// --- BUTTONS ---
-constexpr int PIN_COPI_BUTTON = 14;
-constexpr int PIN_LATCH_BUTTON = 1;
-constexpr int PIN_SCK_BUTTON = 11;
-
-volatile long encoderRawCount = 0;      // INIT FOR TRACKING PULSES FROM ENCODER
-long lastEncoderRead = 0;               // INIT TIMER SINCE LAST ENCODER READ
+// Display Specific Headers
+#include "display_font.h"                                 // Character segment mappings, display fonts, and final display buffer construction
+#include "selection_util.h"                               // Provides the flashing cursor used in the alarm configuration menu
+#include "time_util.h"                                    // Time formatting for display, handles 24hr/12hr time and padding
 
 volatile int menuIndex = 0;             // INIT MENU INDEX
 volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
@@ -87,24 +36,111 @@ int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
 int encoderDebug_timeLastPressed = 0; 
 int timeSinceLastPMR = 50000;
 int lastNotifCheck = 0;
+// Features
+#include "features/stopwatch.h"                           // Stopwatch class for the stopwatch feature
+#include "features/alarm.h"                               // Alarm class for the alarm feature
+#include "features/timezone.h"                            // Timezone class and data for the timezone configuration menu
+#include "features/notification.h"                        // Notification class for flashing notification pop ups triggered by alarms and timers
+#include "features/timer.h"                               // Configurable timer class
+#include "features/clock.h"                               // Clock class for the clock page's logic 
+#include "features/keyboard.h"                            // Text input class, primarily used for networking SSID/Password inputs
+#include "features/networking.h"                          // Networking class for setting up WiFi
 
-bool homeButtonPressed = false;
-bool modButtonPressed = false;
-bool aButtonPressed = false;
-bool bButtonPressed = false;
-bool cButtonPressed = false;
-bool dButtonPressed = false;
-bool eButtonPressed = false;
+// Settings
+#include "settings/brightness.h"                          // Brightness settings menu class
 
-uint8_t originalBrightness;
-uint8_t originalBrightnessIndex;
+////////////////////////////////////////////////////////////
+// STATES //////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+enum SystemState {
+  CLOCK_CLEAN,                                            // Clock screen without the navigation context
+  NAV_MODE,                                               // Main menu navigation
+  TZ_SELECT,                                              // Time zone configuration menu
+  STOPWATCH,                                              // Simple stopwatch
+  ALARM,                                                  // Configurable alarm with day-specific repeats, 3 alarms
+  MODE_TIMER,                                             // Configurable timer, up to three timers
+  NOTIFICATION,                                           // Notification pop ups
+  SETTINGS,                                               // Settings submenu, contains TZ_SELECT, BRIGHTNESS, and NETWORK_MENU
+  BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
+  KEYBOARD_ENTRY,                                         // Keyboard used for network config
+  NETWORK_MENU                                            // Network scan and config menu
+};
+SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
+SystemState lastState = currentState;
 
-int keyboardMode = 0;
+unsigned long menuTimeout = 0;
 
-SPIClass buttonSPI(HSPI);               // second SPI instance for the buttons
+////////////////////////////////////////////////////////////
+// GLOBALS /////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0); // SET SPI
-SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2); // BUTTON SPI
+// Display /////////////////////////////////////////////////
+uint64_t toDisplayWords[12];                              // Initializes the array of 64-bit integers containing the segments and decimal point, mux bits, and status LED bits
+unsigned long lastUpdate = 0;                             // Time since last screen update
+
+// Clock ///////////////////////////////////////////////////
+bool hour24;                                              // Boolean for handling if the clock is in 24-hour (true) or 12-hour mode (false)
+
+// Notifications ///////////////////////////////////////////
+int activeNotification = -1;                              // Set no current notifications
+
+// Indicator Light Status //////////////////////////////////
+int WiFiLight = 0;                                        // Default WiFi indicator to off
+
+// Encoder /////////////////////////////////////////////////
+volatile long encoderRawCount = 0;                        // Init the number of pulses from the PEC11R
+long lastEncoderRead = 0;                                 // Since last encoder read timer
+bool lastEncState = false;                                // Init the previous encoder movement
+volatile bool encoderMoved = false;                       // Init tracking if the encoder moved recently
+int timeLastPressed = 0;                                  // Track time since the last encoder press for debounce
+int encoderDebug_timeLastPressed = 0;                     // Debug for encoder press
+
+// Buttons /////////////////////////////////////////////////
+bool homeButtonPressed =  false;
+bool modButtonPressed  =  false;
+bool aButtonPressed    =  false;
+bool bButtonPressed    =  false;
+bool cButtonPressed    =  false;
+bool dButtonPressed    =  false;
+bool eButtonPressed    =  false;
+
+// Menu ////////////////////////////////////////////////////
+volatile int menuIndex = 0;                               // Menu index tracking
+int keyboardMode = 0;                                     // Track if you are in a keyboard input
+
+// Brightness //////////////////////////////////////////////
+uint8_t originalBrightness;                               // Tracks what the current brightness level is
+uint8_t originalBrightnessIndex;                          // Tracks where in the brightness menu it is   
+
+////////////////////////////////////////////////////////////
+// PIN DEFINITIONS /////////////////////////////////////////
+////////////////////////////////////////////////////////////
+constexpr int PIN_COPI          =       13;               // SPI for the display
+constexpr int PIN_LATCH         =       6;                // SPI RCLK for the display
+constexpr int PIN_OE            =       4;                // 75HC595 display output enable, PWM control for brightness
+constexpr int PIN_SCK           =       12;               // SPI clock for the display
+
+// Peripherals /////////////////////////////////////////////
+constexpr int PIN_LIGHT         =       7;                // Phototransistor
+constexpr int PIN_MFP           =       8;                // External RTC 
+
+// Encoder /////////////////////////////////////////////////
+constexpr int PIN_ENCODER_PUSH  =       15;               // Encoder push button
+constexpr int PIN_ENCODER_A     =       9;                // Encoder's pin A for rotation tracking
+constexpr int PIN_ENCODER_B     =       10;               // Encoder's pin B for rotation tracking
+
+// Buttons /////////////////////////////////////////////////
+constexpr int PIN_COPI_BUTTON   =       14;               // SPI for the button panel
+constexpr int PIN_LATCH_BUTTON  =       1;                // SPI RCLK for the button panel
+constexpr int PIN_SCK_BUTTON    =       11;               // SPI clock for the button panel
+
+////////////////////////////////////////////////////////////
+// SPI  ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+SPIClass buttonSPI(HSPI);                                 // second SPI instance for the buttons with the ESP32's HSPI bus
+
+SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0);     // Set the display's SPI settings
+SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2);     // Set the button panel's SPI settings 
 
 // --- TIMER POLLING ---
 static int8_t DRAM_ATTR encoder_states[] = {
@@ -520,8 +556,8 @@ void loop() {
         break;
 
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
-        if (menuIndex < 0) menuIndex = 5;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
-        if (menuIndex > 5) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
+        if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
+        if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
@@ -567,14 +603,7 @@ void loop() {
             menuIndex = 0;
             currentState = SETTINGS;
           }
-        } else if (menuIndex == 5) {
-          displayBuilder(" KEYBOARD   ", toDisplayWords, true);
-          if (buttonDetect(buttonPressed, now)) {
-            timeLastPressed = now;
-            menuIndex = 0;
-            currentState = KEYBOARD_ENTRY;
-          }
-        }
+        } 
         break;
 
       case TZ_SELECT:

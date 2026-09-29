@@ -1,5 +1,4 @@
 #include "networking.h"
-#include "secrets.h"
 
 volatile bool globalWiFiConnected = false;
 
