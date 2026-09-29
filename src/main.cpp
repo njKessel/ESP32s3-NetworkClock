@@ -9,19 +9,19 @@
 ////////////////////////////////////////////////////////////
 // INCLUDES ////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
-// Arduino Headers
+
+// Arduino Headers /////////////////////////////////////////
 #include <Arduino.h>                                      // Basic arduino functions and classes
 #include <WiFi.h>                                         // Arduino WiFi header/resources
 #include <SPI.h>                                          // Arduino SPI header, used for the button panel and 74HC595 display
 #include <Wire.h>                                         // I2C header for communitaction with the RTC
 
-// ESP32 Headers
+// ESP32 Headers ///////////////////////////////////////////
 #include <esp_timer.h>                                    // Used for encoder debounce in setupEncoderTimer
 
-// C++ Libraries
+// C++ Libraries ///////////////////////////////////////////
 #include <string>                                         // Used for routing keyboard output
 
-#include <string>
 // My Headers //////////////////////////////////////////////
 
 // Display Specific Headers
@@ -43,6 +43,7 @@
 #include "settings/brightness.h"                          // Brightness settings menu class
 #include "settings/set_time.h"                            // Manual time configuration class
 
+// Classes
 TimeUtil timeUtil;
 Stopwatch stopwatchTool;
 Alarm alarmTool;
