@@ -97,7 +97,9 @@ bool hour24;                                              // Boolean for handlin
 int activeNotification = -1;                              // Set no current notifications
 
 // Indicator Light Status //////////////////////////////////
-int WiFiLight = 0;                                        // Default WiFi indicator to off
+int WiFiLight =  0;                                       // Default WiFi indicator to off
+int alarmLight = 0;                                       // Default alarm light to off
+int timerLight = 0;                                       // Default timer light to off
 
 // Encoder /////////////////////////////////////////////////
 volatile long encoderRawCount = 0;                        // Init the number of pulses from the PEC11R
@@ -197,85 +199,84 @@ void setupEncoderTimer() {
 // BUTTON LOGIC ////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
-uint8_t pullButtonStates() {
-  digitalWrite(PIN_LATCH_BUTTON, LOW);
+// Button States Check /////////////////////////////////////
+uint8_t pullButtonStates() {                              // Pull all of the buttons current status from the 74HC165 
+  digitalWrite(PIN_LATCH_BUTTON, LOW);                    // Injest button states to the register
   delayMicroseconds(1);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
   delayMicroseconds(1);
   
-  buttonSPI.beginTransaction(btSettings);
+  buttonSPI.beginTransaction(btSettings);                 // Read register data
   uint8_t buttonStates = buttonSPI.transfer(0);
   buttonSPI.endTransaction();
   return buttonStates; 
 }
 
+// Check a Button //////////////////////////////////////////
 bool checkButton(uint8_t buttonStates, int bitIndex) {
-  return (buttonStates & (1 << bitIndex)) != 0;
+  return (buttonStates & (1 << bitIndex)) != 0;           
 }
 
-bool buttonDetect(bool buttonPressed, unsigned long now) {
+// Display Data Refresh ////////////////////////////////////
+bool buttonDetect(bool buttonPressed, unsigned long now) {// Software debounced button detection
   if (buttonPressed && (now - timeLastPressed > 250)) {
     return true; 
   }
   return false;
 }
+
 ////////////////////////////////////////////////////////////
 // Display Handling ////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
-static void latchPulse() {                                                    
-  digitalWrite(PIN_LATCH, HIGH);                                                // SET LATCH PIN HIGH
-  delayMicroseconds(1);                                                         // WAIT
-  digitalWrite(PIN_LATCH, LOW);                                                 // SET LATCH PIN LOW
-  delayMicroseconds(1);                                                         // WAIT TO PREVENT BEING TOO FAST
+// Display Data Refresh ////////////////////////////////////
+static void latchPulse() {                                // Refresh the data in the registers                             
+  digitalWrite(PIN_LATCH, HIGH);                          // Output current data to display
+  delayMicroseconds(1);
+  digitalWrite(PIN_LATCH, LOW);                           // Lock new data from being sent to the display
+  delayMicroseconds(1);
 }
 
+// Display Data ransfer ///////////////////////////////////
 void spiWrite64(uint64_t data) {  
-  uint32_t high = (uint32_t)(data >> 32);                                       // BREAK HALF OF THE 64 BITS OFF
-  uint32_t low = (uint32_t)(data & 0xFFFFFFFF);                                 // BREAK HALF OF THE 64 BITS OFF
+  uint32_t high = (uint32_t)(data >> 32);                 // Break the MSB component off of the data
+  uint32_t low = (uint32_t)(data & 0xFFFFFFFF);           // Break the LSB component off of the data
 
-
-  digitalWrite(PIN_LATCH, LOW);                                                 // DO NOT DISPLAY DATA
-  SPI.beginTransaction(srSettings);                                             // OPEN SPI TRANSMISSION
-  SPI.transfer32(high);                                                         // SEND MSB PART
-  SPI.transfer32(low);                                                          // SEND LSB PART
-  SPI.endTransaction();                                                         // CLOSE SPI TRANSMISSION
-  asm volatile("nop;nop;nop;nop");                                              // SHORT DELAY USING ASM NO-OPERATION
-  latchPulse();                                                                 // LATCH SHIFT REGISTERS
+  digitalWrite(PIN_LATCH, LOW);                           // Hide new data from the display
+  SPI.beginTransaction(srSettings);
+  SPI.transfer32(high);                                   // Send MSB data
+  SPI.transfer32(low);                                    // Send LSB data
+  SPI.endTransaction();
+  asm volatile("nop;nop;nop;nop");                        // Very short delay to allow shift registers to ingest
+  latchPulse();                                           // Refresh data thats being sent to the display
 }
 
-// --- RENDER FUNCTION ---
+// Display Render //////////////////////////////////////////
 void renderDisplay(uint64_t* currentBuffer) {
-  for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
-    spiWrite64(currentBuffer[i]);                                               // WRITE THE DATA FOR EACH CHAR
-    delayMicroseconds(180);                                                     // MUX REFRESH RATE
+  for (int i = 0; i < 12; i++) {                          // Loop through all of the characters (multiplex)
+    spiWrite64(currentBuffer[i]);                         // Write current characters data (its anode and its char's segments)
+    delayMicroseconds(180);                               // Multiplexing speed (refresh rate)
     spiWrite64(0);  
-    delayMicroseconds(20);
+    delayMicroseconds(20);                                // Blanking interval
   }
 }
 
+// Brightness //////////////////////////////////////////////
 void setDisplayBrightness(uint8_t brightnessLevel) {
-    uint8_t hardwareDuty = 255 - brightnessLevel; 
+    uint8_t hardwareDuty = 255 - brightnessLevel;
 
-    ledcWrite(0, hardwareDuty); 
+    ledcWrite(0, hardwareDuty);                           // Send current duty cycle to PWM control
 }
 
-void displayBufferTime(bool showArrows) {
-  if (lastEncState) {hour24 = true;} else {hour24 = false;};
-
-  struct tm timeinfo;                                                                              // INIT STRUCT FOR TIME DETAILS
-
-  if (getLocalTime(&timeinfo, 0)) {                                                                // DOES ESP32 HAVE SYNCED TIME AND IF SO WHAT IS IT
-    displayBuilder((char*)(timeUtil.formatTime(timeinfo, hour24)).c_str(), toDisplayWords, showArrows);       // BUILD toDisplayWords FORMATTED
-  }
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             /////////   /////////   /////////   ///   ///   /////////
             ///         ///            ///      ///   ///   ///   ///
 //////////  /////////   /////////      ///      ///   ///   /////////   ////////////////////////////////////////////////////////
                   ///   ///            ///      ///   ///   ///
             /////////   /////////      ///      /////////   ///
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
