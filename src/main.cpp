@@ -9,7 +9,7 @@
 ////////////////////////////////////////////////////////////
 // INCLUDES ////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
-
+bool pmrEnable = true;
 // Arduino Headers
 #include <Arduino.h>                                      // Basic arduino functions and classes
 #include <WiFi.h>                                         // Arduino WiFi header/resources
@@ -21,6 +21,7 @@
 // C++ Libraries
 #include <string>                                         // Used for routing keyboard output
 
+#include <string>
 // My Headers //////////////////////////////////////////////
 
 // Display Specific Headers
@@ -28,6 +29,13 @@
 #include "selection_util.h"                               // Provides the flashing cursor used in the alarm configuration menu
 #include "time_util.h"                                    // Time formatting for display, handles 24hr/12hr time and padding
 
+volatile int menuIndex = 0;             // INIT MENU INDEX
+volatile bool encoderMoved = false;     // INIT ENCODER MOVEMENT
+bool lastEncState = false;              // INIT PREVIOUS ENCODER MOVEMENT
+int timeLastPressed = 0;                // INIT TIMER SINCE LAST ENCODER PRESS
+int encoderDebug_timeLastPressed = 0; 
+int timeSinceLastPMR = 50000;
+int lastNotifCheck = 0;
 // Features
 #include "features/stopwatch.h"                           // Stopwatch class for the stopwatch feature
 #include "features/alarm.h"                               // Alarm class for the alarm feature
@@ -259,12 +267,12 @@ void setup() {
   while (!Serial && (millis() - start < 3000)) {
     delay(10); 
   }
-  
+
   Serial.println("00 SETUP: Serial Monitor Online");
 
   pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
-    Serial.println("Resetting ");
+    Serial.println("SYS 000 RESET: Reset preferences");
     displayBuilder(" RESETTING  ", toDisplayWords, false);
     
     alarmTool.begin();      
@@ -319,13 +327,23 @@ void setup() {
 // --- LOOP ---
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
+  // Per minute report
+  if(pmrEnable && (now - timeSinceLastPMR > 60000)){
+    Serial.println("DBG 000 PMINR | PER MINUTE REPORT");
+    Serial.println("DBG 000 PMINR | -----------------");
+    Serial.print(  "DBG 000 PMINR | UPTIME: ");           Serial.println(millis());
+    Serial.print(  "DBG 000 PMINR | BRIGHTNESS: ");       Serial.println(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
+    Serial.print(  "DBG 000 PMINR | WIFI: ");             Serial.println(networkTool.isConnected());
+    timeSinceLastPMR = now;
+  }
+
+
 
   if (lastState != currentState) {
     Serial.print("00 STATE: State change to ");
     Serial.println(SystemState(currentState));
   }
   lastState = currentState;
-
   uint16_t lightSensorData = analogRead(PIN_LIGHT);
 
   bool hasMoved = encoderMoved;
@@ -459,14 +477,14 @@ void loop() {
     if (brightnessTool.getSelectedIndex() == 8) {
       setDisplayBrightness(brightnessTool.getSelectedBrightness(lightSensorData));
     }
-
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
     if (currentState == ALARM) {timeoutDuration = 20000;}
     else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
     else if (currentState == SETTINGS) {timeoutDuration = 20000;}
+    
 
-    if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && currentState != NOTIFICATION && currentState != MODE_TIMER && (now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
+    if (currentState != CLOCK_CLEAN && currentState != STOPWATCH && currentState != NOTIFICATION && currentState != MODE_TIMER && currentState != KEYBOARD_ENTRY && currentState != NETWORK_MENU &&(now - menuTimeout > timeoutDuration)) {                       // IF NOT ON THE CLEAN CLOCK PAGE AND ITS BEEN LONGER THAN TIMEOUT GO TO CLOCK PAGE
       if (currentState == ALARM) {
           alarmTool.save();
       }
@@ -488,42 +506,43 @@ void loop() {
       } else {
         currentState = CLOCK_CLEAN;
       }
-      
     }
 
-    if (currentState != NOTIFICATION) {
-      if (alarmTool.shouldRing(0)) {
-        activeNotification = 0;
-        currentState = NOTIFICATION;
-        Serial.println("80 NOTIF: Alarm Notification 0");
-      } else if (alarmTool.shouldRing(1)) {
-        activeNotification = 1;
-        currentState = NOTIFICATION;
-        Serial.println("81 NOTIF: Alarm Notification 1");
-      } else if (alarmTool.shouldRing(2)) {
-        activeNotification = 2;
-        currentState = NOTIFICATION;
-        Serial.println("82 NOTIF: Alarm Notification 2");
-      } else if (timerTool.shouldRing(1)) {
-        activeNotification = 3;
-        currentState = NOTIFICATION;
-        Serial.println("83 NOTIF: Timer Notification 1");
-      } else if (timerTool.shouldRing(2)) {
-        activeNotification = 4;
-        currentState = NOTIFICATION;
-        Serial.println("84 NOTIF: Timer Notification 2");
-      } else if (timerTool.shouldRing(3)) {
-        activeNotification = 5;
-        currentState = NOTIFICATION;
-        Serial.println("85 NOTIF: Timer Notification 3");
+
+    if (now - lastNotifCheck >= 1000) {
+      if (currentState != NOTIFICATION) {
+        if (alarmTool.shouldRing(0)) {
+          activeNotification = 0;
+          currentState = NOTIFICATION;
+          Serial.println("80 NOTIF: Alarm Notification 0");
+        } else if (alarmTool.shouldRing(1)) {
+          activeNotification = 1;
+          currentState = NOTIFICATION;
+          Serial.println("81 NOTIF: Alarm Notification 1");
+        } else if (alarmTool.shouldRing(2)) {
+          activeNotification = 2;
+          currentState = NOTIFICATION;
+          Serial.println("82 NOTIF: Alarm Notification 2");
+        } else if (timerTool.shouldRing(1)) {
+          activeNotification = 3;
+          currentState = NOTIFICATION;
+          Serial.println("83 NOTIF: Timer Notification 1");
+        } else if (timerTool.shouldRing(2)) {
+          activeNotification = 4;
+          currentState = NOTIFICATION;
+          Serial.println("84 NOTIF: Timer Notification 2");
+        } else if (timerTool.shouldRing(3)) {
+          activeNotification = 5;
+          currentState = NOTIFICATION;
+          Serial.println("85 NOTIF: Timer Notification 3");
+        }
       }
+      lastNotifCheck = now;
     }
-
     // State Machine
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
         displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
-
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
           Clock.onButtonPress();
@@ -780,12 +799,31 @@ void loop() {
       }
 
       case NETWORK_MENU: {
-        displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, true);
+        NetworkMenuState netState = networkTool.getMenuState();
+        
+        // Only show the < > navigation arrows if we are actively selecting a network
+        bool showArrows = (netState == NET_SELECT_SSID);
 
+        displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, showArrows);
+
+        // Auto-Exit to Clock when Connected OR Failed
+        static unsigned long statusTimer = 0;
+        if (netState == NET_CONNECTED || netState == NET_FAILED) {
+            if (statusTimer == 0) statusTimer = now;
+            if (now - statusTimer > 2000) {
+                if (netState == NET_FAILED) {
+                    networkTool.reset();
+                }
+                currentState = CLOCK_CLEAN;
+            }
+        } else {
+            statusTimer = 0;
+        }
+
+        // Handle button inputs
         if (buttonPressed && (now - timeLastPressed > 250)) {
             timeLastPressed = now;
             menuTimeout = now;
-            NetworkMenuState netState = networkTool.getMenuState();
             
             if (netState == NET_INIT || netState == NET_FAILED || netState == NET_CONNECTED) {
                 networkTool.onButtonPress();
@@ -813,4 +851,3 @@ void loop() {
   }
   renderDisplay(toDisplayWords);                                                                      // RENDER CURRENT SCREEN STATE
 }
-
