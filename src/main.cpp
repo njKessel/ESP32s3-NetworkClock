@@ -49,6 +49,22 @@ int lastNotifCheck = 0;
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
 
+TimeUtil timeUtil;
+Stopwatch stopwatchTool;
+Alarm alarmTool;
+TimeZoneSetting tzTool;
+Notification notifTool;
+Timer timerTool;
+Clock clockTool;
+Brightness brightnessTool;
+KeyboardInput keyboardTool(32);
+Networking networkTool;
+////////////////////////////////////////////////////////////
+// DEBUG ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+bool debug = true;
+bool verboseDebug = true;
+
 ////////////////////////////////////////////////////////////
 // STATES //////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -142,24 +158,30 @@ SPIClass buttonSPI(HSPI);                                 // second SPI instance
 SPISettings srSettings(4000000, MSBFIRST, SPI_MODE0);     // Set the display's SPI settings
 SPISettings btSettings(4000000, MSBFIRST, SPI_MODE2);     // Set the button panel's SPI settings 
 
-// --- TIMER POLLING ---
-static int8_t DRAM_ATTR encoder_states[] = {
+////////////////////////////////////////////////////////////
+// ENCODER LOGIC ///////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+// Lookup table ////////////////////////////////////////////
+static int8_t DRAM_ATTR encoder_states[] = {              // Quadrature encoder lookup table, stored in DRAM
   0, -1,  1,  0,
   1,  0,  0, -1,
  -1,  0,  0,  1,
   0,  1, -1,  0
 };
 
-void IRAM_ATTR onTimer(void* arg) {        
-  static uint8_t old_AB = 0;                                                    // init old_AB = 0b00000000 
-  old_AB <<= 2;                                                                 // MOVES BITS LEFT 2
-  old_AB |= (digitalRead(PIN_ENCODER_A) << 1) | digitalRead(PIN_ENCODER_B);     // READ PINS A AND B, PUT PIN A VAL IN POS 1 AND PIN B VAL IN POS 2, NOW WE HAVE 0b0000ABAB WHERE FIRST AB IS OLDAB AND SECOND AB IS NEW AB
-  old_AB &= 0x0f;                                                               // ZEROS THE EXTRA BITS SO MAX 4 BITS
+// Interrupt Handler ///////////////////////////////////////
+void IRAM_ATTR onTimer(void* arg) {                       // Store in internal RAM
+  static uint8_t old_AB = 0;                              // init old_AB at 0 to signal no change at boot
+  old_AB <<= 2;                                           // Move last check's bits over
+  old_AB |= (digitalRead(PIN_ENCODER_A) << 1) | digitalRead(PIN_ENCODER_B);     
+                                                          // Read the pin states and combine them to get the index for the lookup table
+  old_AB &= 0x0f;                                         // Ensure max of 4 bits
 
-  int change = encoder_states[old_AB];                                          // LOOK TO SEE IF VALID MOVE
-  if (change != 0) {                                                            // IF VALID MOVE
-    encoderRawCount += change;                                                  // INCREMENT encoderRawCount BY VALUE IN encoder_states
-    encoderMoved = true;                                                        // SIGNAL THE ENCODER CHANGE
+  int change = encoder_states[old_AB];                    // Looks at what old_AB means, interpret if there was a change
+  if (change != 0) {
+    encoderRawCount += change;                            // Increment encoderRawCount by the value stored in encoder_states
+    encoderMoved = true;                                  // Signal that the encoder changed so other functions can tell
   }
 }
 
@@ -173,7 +195,36 @@ void setupEncoderTimer() {
   esp_timer_start_periodic(encoder_timer, 1000);                                // STARTS TIMER BY ID AND W/O STOP (PERIODIC)
 }
 
-// --- LOW LEVEL HARDWARE ---
+////////////////////////////////////////////////////////////
+// BUTTON LOGIC ////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+uint8_t pullButtonStates() {
+  digitalWrite(PIN_LATCH_BUTTON, LOW);
+  delayMicroseconds(1);
+  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
+  delayMicroseconds(1);
+  
+  buttonSPI.beginTransaction(btSettings);
+  uint8_t buttonStates = buttonSPI.transfer(0);
+  buttonSPI.endTransaction();
+  return buttonStates; 
+}
+
+bool checkButton(uint8_t buttonStates, int bitIndex) {
+  return (buttonStates & (1 << bitIndex)) != 0;
+}
+
+bool buttonDetect(bool buttonPressed, unsigned long now) {
+  if (buttonPressed && (now - timeLastPressed > 250)) {
+    return true; 
+  }
+  return false;
+}
+////////////////////////////////////////////////////////////
+// Display Handling ////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
 static void latchPulse() {                                                    
   digitalWrite(PIN_LATCH, HIGH);                                                // SET LATCH PIN HIGH
   delayMicroseconds(1);                                                         // WAIT
@@ -195,23 +246,6 @@ void spiWrite64(uint64_t data) {
   latchPulse();                                                                 // LATCH SHIFT REGISTERS
 }
 
-// Recieving data
-uint8_t pullButtonStates() {
-  digitalWrite(PIN_LATCH_BUTTON, LOW);
-  delayMicroseconds(1);
-  digitalWrite(PIN_LATCH_BUTTON, HIGH); 
-  delayMicroseconds(1);
-  
-  buttonSPI.beginTransaction(btSettings);
-  uint8_t buttonStates = buttonSPI.transfer(0);
-  buttonSPI.endTransaction();
-  return buttonStates; 
-}
-
-bool checkButton(uint8_t buttonStates, int bitIndex) {
-  return (buttonStates & (1 << bitIndex)) != 0;
-}
-
 // --- RENDER FUNCTION ---
 void renderDisplay(uint64_t* currentBuffer) {
   for (int i = 0; i < 12; i++) {                                                // LOOP 12 POSITIONS
@@ -222,16 +256,12 @@ void renderDisplay(uint64_t* currentBuffer) {
   }
 }
 
-
 void setDisplayBrightness(uint8_t brightnessLevel) {
     uint8_t hardwareDuty = 255 - brightnessLevel; 
 
     ledcWrite(0, hardwareDuty); 
 }
 
-TimeUtil timeUtil;
-
-// --- FUNCTIONS ---
 void displayBufferTime(bool showArrows) {
   if (lastEncState) {hour24 = true;} else {hour24 = false;};
 
@@ -242,37 +272,27 @@ void displayBufferTime(bool showArrows) {
   }
 }
 
-bool buttonDetect(bool buttonPressed, unsigned long now) {
-  if (buttonPressed && (now - timeLastPressed > 250)) {
-    return true; 
-  }
-  return false;
-}
 
-Stopwatch stopwatchTool;
-Alarm alarmTool;
-TimeZoneSetting tzTool;
-Notification notifTool;
-Timer timerTool;
-Clock Clock;
-Brightness brightnessTool;
-KeyboardInput keyboardTool(32);
-Networking networkTool;
+            /////////   /////////   /////////   ///   ///   /////////
+            ///         ///            ///      ///   ///   ///   ///
+//////////  /////////   /////////      ///      ///   ///   /////////   ////////////////////////////////////////////////////////
+                  ///   ///            ///      ///   ///   ///
+            /////////   /////////      ///      /////////   ///
 
-// --- SETUP ---
 void setup() {
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
-  
+  Serial.println("DBG 001 SETUP: Serial Monitor Online");
+  if (debug == true) {Serial.println("DBG 000 SETUP: Setup begin");}
   uint32_t start = millis();
   while (!Serial && (millis() - start < 3000)) {
     delay(10); 
   }
-
-  Serial.println("00 SETUP: Serial Monitor Online");
+  
+  
 
   pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
   if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
-    Serial.println("SYS 000 RESET: Reset preferences");
+    Serial.println("DBG 0F0 RESET: Factory reset");
     displayBuilder(" RESETTING  ", toDisplayWords, false);
     
     alarmTool.begin();      
@@ -288,43 +308,47 @@ void setup() {
   timerTool.begin();
   networkTool.begin();
   pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  Serial.println("01 SETUP: Display latch pin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 002 SETUP: Display latch pin.");}
   pinMode(PIN_LIGHT, ANALOG);
-  Serial.println("02 SETUP: Light sense pin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 003 SETUP: Light sense pin.");}
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
   ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
-  Serial.println("03 SETUP: Display Output Enable Pin (Brightness).");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");}
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
-  Serial.println("10 CALIB: Brightness initial callibration.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 020 CALIB: Brightness initial callibration.");}
 
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
-  Serial.println("04 SETUP: Display SPI begin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 007 SETUP: Display SPI configurated");}
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
 
   buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
-  Serial.println("05 SETUP: Button SPI begin.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 008 SETUP: Button SPI configurated");}
 
   initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
-  Serial.println("06 SETUP: Encoder rotation pins.");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 009 SETUP: Encoder rotation pins configured");}
 
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
-  Serial.println("07 SETUP: Encoder SW Debounce");
+  if (debug == true && verboseDebug == true) {Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");}
   
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
   // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
 
-  Serial.println("08 SETUP: Time set");
-  Serial.println("0F SETUP: End of setup");
+  if (debug == true) {Serial.println("DBG 002 SETUP: End of setup");}
 }
 
-// --- LOOP ---
+            ///////////////   /////////   /////////   /////////
+            ///   ///   ///   ///   ///      ///      ///   ///
+//////////  ///   ///   ///   /////////      ///      ///   ///   //////////////////////////////////////////////////////////////
+            ///   ///   ///   ///   ///      ///      ///   ///
+            ///   ///   ///   ///   ///   /////////   ///   ///
+
 void loop() {
   unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
   // Per minute report
@@ -340,7 +364,7 @@ void loop() {
 
 
   if (lastState != currentState) {
-    Serial.print("00 STATE: State change to ");
+    Serial.print("DBG 030 STATE: State change to ");
     Serial.println(SystemState(currentState));
   }
   lastState = currentState;
@@ -354,7 +378,7 @@ void loop() {
   bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
 
   if (buttonPressed && (now - encoderDebug_timeLastPressed > 250)) {
-    Serial.println("DBG 027 STATE: Encoder Button Detect ");
+    Serial.println("DBG 010 INPUT: Encoder Button Detect");
     encoderDebug_timeLastPressed = now;
   }
 
@@ -373,7 +397,7 @@ void loop() {
 
   static bool timeInitialized = false;
   if (WiFiLight == 1 && !timeInitialized) {
-      Serial.println("95 NETWK: WiFi Connected, starting NTP sync");
+      Serial.println("DBG 095 NETWK: WiFi Connected, starting NTP sync");
       timeUtil.initTime("EST5EDT");
       timeInitialized = true;
   }
@@ -493,12 +517,12 @@ void loop() {
     }
 
     if (buttonDetect(homeButtonPressed, now) && (currentState != KEYBOARD_ENTRY)) {
-      Serial.println("20 INPUT: Home Button Detect");
+      Serial.println("DBG 011 INPUT: Home Button Detect");
       timeLastPressed = now;
       alarmTool.reset();
       timerTool.reset();
       stopwatchTool.reset();
-      Clock.onHomeButtonPress();
+      clockTool.onHomeButtonPress();
       if (currentState == BRIGHTNESS) {
         setDisplayBrightness(originalBrightness);
         brightnessTool.cancel(originalBrightnessIndex);
@@ -542,15 +566,16 @@ void loop() {
     // State Machine
     switch (currentState) {
       case CLOCK_CLEAN:                                                                               // IF ON CLEAN CLOCK PAGE
-        displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
+        displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
+
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
           lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
-          Clock.onButtonPress();
+          clockTool.onButtonPress();
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
         }
         if (buttonDetect(modButtonPressed, now)) {
             timeLastPressed = now;
-            Clock.onModButtonPress();
+            clockTool.onModButtonPress();
             menuTimeout = now;
           }
         break;
@@ -560,15 +585,15 @@ void loop() {
         if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
 
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
-          displayBuilder((char*)Clock.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
+          displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
           if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
             lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
-            Clock.onButtonPress();
+            clockTool.onButtonPress();
             timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
           }
           if (buttonDetect(modButtonPressed, now)) {
             timeLastPressed = now;
-            Clock.onModButtonPress();
+            clockTool.onModButtonPress();
             menuTimeout = now;
           }
         } else if (menuIndex == 1) {
@@ -760,8 +785,6 @@ void loop() {
                 currentState = NETWORK_MENU;
                 keyboardMode = 0; 
             } else { 
-                Serial.print("User Entered: ");
-                Serial.println(finalInput.c_str());
                 currentState = CLOCK_CLEAN; 
             }
         }

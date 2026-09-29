@@ -65,8 +65,7 @@ String Clock::getClockDisplay() {
         localtime_r(&now, &ti); 
         
         if (ti.tm_year < 116) {
-            //Serial.println("C1 CLOCK: Waiting for NTP sync");
-            
+            // Serial.println("DBG 060 CLOCK: Waiting for NTP sync");
             return "   TIME?    ";
         }
         

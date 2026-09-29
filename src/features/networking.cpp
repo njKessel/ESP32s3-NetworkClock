@@ -19,7 +19,7 @@ Networking::Networking() {
 }
 
 void Networking::begin() {
-    Serial.println("90 NETWK: Starting WiFI Connection");
+    Serial.println("DBG 040 NETWK: Starting WiFI Connection");
     
     WiFi.onEvent(WiFiEvent);
     
@@ -32,23 +32,23 @@ void Networking::begin() {
     if (prefs.isKey("ssid")) {
         savedSSID = prefs.getString("ssid", "").c_str();
         savedPassword = prefs.getString("pass", "").c_str();
-        Serial.println("DBG 091 NETWK: Connecting to saved network");
+        Serial.println("DBG 042 NETWK: Connecting to saved network");
         WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
     } else {
-        Serial.println("DBG 092 NETWK: No network saved");
+        Serial.println("DBG 043 NETWK: No network saved");
         savedSSID = "";
         savedPassword = "";
     }
 }
 
 void Networking::saveCredentials() {
-    Serial.println("93 NETWK: Saving Network Credentials");
+    Serial.println("DBG 044 NETWK: Saving Network Credentials");
     prefs.putString("ssid", savedSSID.c_str());
     prefs.putString("pass", savedPassword.c_str());
 }
 
 void Networking::factoryReset() {
-    Serial.println("9F NETWK: Network Settings Factory Reset");
+    Serial.println("DBG 04F NETWK: Network Settings Factory Reset");
     prefs.begin("wifi", false);
     prefs.clear();
     savedSSID = "";
@@ -85,7 +85,7 @@ void Networking::onButtonPress() {
 }
 
 void Networking::startScan() {
-    Serial.println("90 NETWK: Starting Network Scan");
+    Serial.println("DBG 045 NETWK: Starting Network Scan");
     menuState = NET_SCANNING;
     scannedNetworks.clear();
     
