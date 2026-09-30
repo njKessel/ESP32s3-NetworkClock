@@ -19,7 +19,9 @@ class Weather {
         void begin();
         String getDisplayString();
         
-        void saveConfig(String api, String lat, String lon); 
+        void saveApiKey(String api);
+        void saveLat(String lat);
+        void saveLon(String lon);
 };
 
 #endif

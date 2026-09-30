@@ -12,14 +12,27 @@ volatile unsigned long Weather::lastFetchTime = 0;
 
 Weather::Weather() {}
 
-void Weather::saveConfig(String api, String lat, String lon) {
+void Weather::saveApiKey(String api) {
     Preferences prefs;
     prefs.begin("weather", false);
     prefs.putString("api", api);
+    prefs.end();
+    lastFetchTime = 0; 
+}
+
+void Weather::saveLat(String lat) {
+    Preferences prefs;
+    prefs.begin("weather", false);
     prefs.putString("lat", lat);
+    prefs.end();
+    lastFetchTime = 0; 
+}
+
+void Weather::saveLon(String lon) {
+    Preferences prefs;
+    prefs.begin("weather", false);
     prefs.putString("lon", lon);
     prefs.end();
-
     lastFetchTime = 0; 
 }
 

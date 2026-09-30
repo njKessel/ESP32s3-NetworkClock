@@ -77,7 +77,8 @@ enum SystemState {
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
   NETWORK_MENU,                                           // Network scan and config menu
   MANUAL_TIME,                                            // Manual time config screen
-  WEATHER_SCREEN                                          // Weather screen
+  WEATHER_SCREEN,                                         // Weather screen
+  WEATHER_MENU                                            // Weather configuration
 };
 SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
@@ -427,12 +428,12 @@ void loop() {
         }
     } 
 
-    else if (currentState == NAV_MODE || currentState == SETTINGS) {
+    else if (currentState == NAV_MODE || currentState == SETTINGS || currentState == WEATHER_MENU) {
         if (movement != lastEncoderRead) {
             if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
             lastEncoderRead = movement;
         }
-    } 
+    }
 
     else if (currentState == ALARM) {
       if (movement != lastEncoderRead) {
@@ -520,7 +521,7 @@ void loop() {
     }
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
-    if (currentState == ALARM || currentState == MANUAL_TIME) {timeoutDuration = 20000;}
+    if (currentState == ALARM || currentState == MANUAL_TIME || currentState == WEATHER_MENU) {timeoutDuration = 20000;}
     else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
     else if (currentState == SETTINGS) {timeoutDuration = 20000;}
     
@@ -815,10 +816,9 @@ void loop() {
         } else if (menuIndex == 4) {
           displayBuilder(" WEATHER    ", toDisplayWords, true);
           if (buttonDetect(buttonPressed, now)) {
-            currentState = KEYBOARD_ENTRY;
-            keyboardTool.reset();
-            keyboardMode = 3;
             timeLastPressed = now;
+            menuIndex = 0;
+            currentState = WEATHER_MENU;
             menuTimeout = now;
           }
         }
@@ -866,22 +866,23 @@ void loop() {
               currentState = NETWORK_MENU;
               keyboardMode = 0; 
           } else if (keyboardMode == 3) {
-              // Done typing API key, move to Latitude
-              tempWeatherApi = String(finalInput.c_str());
-              keyboardTool.reset();
-              keyboardMode = 4;
-          } else if (keyboardMode == 4) {
-              // Done typing Latitude, move to Longitude
-              tempWeatherLat = String(finalInput.c_str());
-              keyboardTool.reset();
-              keyboardMode = 5;
-          } else if (keyboardMode == 5) {
-              // Done typing Longitude. Save everything and return to Settings!
-              String tempWeatherLon = String(finalInput.c_str());
-              weatherTool.saveConfig(tempWeatherApi, tempWeatherLat, tempWeatherLon);
+              String apiStr = String(finalInput.c_str());
+              apiStr.toLowerCase();
+              weatherTool.saveApiKey(apiStr);
               
-              currentState = SETTINGS;
-              keyboardMode = 0;
+              currentState = WEATHER_MENU;
+              menuIndex = 0;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 4) {
+              weatherTool.saveLat(String(finalInput.c_str()));
+              currentState = WEATHER_MENU;
+              menuIndex = 1;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 5) {
+              weatherTool.saveLon(String(finalInput.c_str()));
+              currentState = WEATHER_MENU;
+              menuIndex = 2;
+              keyboardMode = 0; 
           } else { 
               currentState = CLOCK_CLEAN; 
           }
@@ -963,6 +964,47 @@ void loop() {
         
         if (buttonDetect(modButtonPressed, now)) {
             timeLastPressed = now;
+            currentState = SETTINGS;
+        }
+        break;
+      }
+
+      case WEATHER_MENU: {
+        if (menuIndex < 0) menuIndex = 2;
+        if (menuIndex > 2) menuIndex = 0;
+
+        if (menuIndex == 0) {
+          displayBuilder(" API KEY    ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 3;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        } else if (menuIndex == 1) {
+          displayBuilder(" LATITUDE   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 4;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        } else if (menuIndex == 2) {
+          displayBuilder(" LONGITUDE  ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 5;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        }
+
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            menuIndex = 4;
             currentState = SETTINGS;
         }
         break;
