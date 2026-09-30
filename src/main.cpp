@@ -853,10 +853,9 @@ void loop() {
       case KEYBOARD_ENTRY: {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
 
-        timeLastPressed = now;
-        std::string finalInput = keyboardTool.getEnteredString();
-
         if (buttonDetect(homeButtonPressed, now)) {
+          timeLastPressed = now;
+          std::string finalInput = keyboardTool.getEnteredString();
           if (keyboardMode == 1) { 
               networkTool.setTargetSSID(finalInput);
               keyboardTool.reset();
@@ -928,7 +927,6 @@ void loop() {
 
         displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, showArrows);
 
-        // Auto-Exit to Clock when Connected OR Failed
         static unsigned long statusTimer = 0;
         if (netState == NET_CONNECTED || netState == NET_FAILED) {
             if (statusTimer == 0) statusTimer = now;
