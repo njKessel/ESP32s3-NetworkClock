@@ -7,41 +7,41 @@
 
 struct alarmData {
     int alarmID; 
-    uint8_t alarmHours; 
-    uint8_t alarmMinutes; 
-    uint8_t alarmDays;
-};
+    uint8_t alarmHours;                         // What hour the alarm triggers
+    uint8_t alarmMinutes;                       // What minute the alarm triggers
+    uint8_t alarmDays;                          // What days the alarm triggers
+}; 
 
 class Alarm {
     private:
         alarmData table[3];
 
-        int currentAlarm;
-        int editField;
-        int pageIndex;
-        int lastTriggeredMinute;
+        int currentAlarm;                       // What alarm is being edited
+        int editField;                          // What field in the menu is being edited
+        int pageIndex;                          // Time config or day config page
+        int lastTriggeredMinute;                // When the alarm last went off
 
-        selectionUtility selector;
-        Preferences prefs;
+        selectionUtility selector;              // Cursor
+        Preferences prefs;                      // Save states
     
     public:
         Alarm();
 
-        void onKnobTurn(int direction);
-        void onButtonPress();
+        void onKnobTurn(int direction);         // Encoder rotation handler
+        void onButtonPress();                   // Choice confirm
 
-        void reset();
+        void reset();                           // Exit handler
 
-        void begin(); 
-        void save();  
-        void factoryReset(); 
+        void begin();                           // Initialize
+        void save();                            // Save states
+        void factoryReset();                    // Factory reset to defaults
 
-        String getAlarmDisplay(bool hour24);
+        String getAlarmDisplay(bool hour24);    // Figure out if the time screen or day screen should be rendered
 
-        String getDayString();
-        String getTimeString(bool hour24);
+        String getDayString();                  // Display string creator that handles which days are active
+        String getTimeString(bool hour24);      // Display string creator that handles both 12 and 24 hour time
 
-        bool shouldRing(int alarmIndex);
+        bool shouldRing(int alarmIndex);        // Check if the alarm should be ringing
 };
 
 
