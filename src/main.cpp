@@ -2,7 +2,7 @@
   PROJECT:      ESP32 Network Clock
   AUTHOR:       Nathaniel Kessel
   DEVICE:       ESP32-S3
-  DATE:         2026-09-28
+  DATE:         2026-09-30
   VERSION:      pre-release
 */
 
@@ -78,6 +78,7 @@ enum SystemState {
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
   NETWORK_MENU,                                           // Network scan and config menu
   MANUAL_TIME,                                            // Manual time config screen
+  LOCAL_TEMP_SCREEN,
   WEATHER_SCREEN,                                         // Weather screen
   WEATHER_MENU                                            // Weather configuration
 };
@@ -275,6 +276,38 @@ void setDisplayBrightness(uint8_t brightnessLevel) {
     uint8_t hardwareDuty = 255 - brightnessLevel;
 
     ledcWrite(0, hardwareDuty);                           // Send current duty cycle to PWM control
+}
+
+// TMP275 Local Temp Sensor ////////////////////////////////
+constexpr int TMP275_ADDR = 0x48;                         // I2C Address for the sensor
+
+String getLocalTempDisplay() {
+    Wire.beginTransmission(TMP275_ADDR);
+    Wire.write(0x00);
+    if (Wire.endTransmission() != 0) {
+        return " SENSOR ERR ";
+    }
+
+    Wire.requestFrom(TMP275_ADDR, 2);
+    if (Wire.available() == 2) {
+        int16_t msb = Wire.read();
+        int16_t lsb = Wire.read();
+        
+        // Combine bytes, shift for 12-bit resolution
+        int16_t rawTemp = (msb << 8) | lsb;
+        rawTemp >>= 4; 
+
+        // Convert to Celsius, then Fahrenheit
+        float tempC = rawTemp * 0.0625;
+        float tempF = (tempC * 1.8) + 32.0;
+        int displayTemp = (int)round(tempF);
+
+        char buffer[24];
+        // Uses the \x08 degree symbol from font table
+        snprintf(buffer, sizeof(buffer), " LCL   %2d\x08""F ", displayTemp);
+        return String(buffer);
+    }
+    return " NO SENSOR  ";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -599,16 +632,20 @@ void loop() {
             clockTool.onModButtonPress();
             menuTimeout = now;
           }
-        if (buttonDetect(eButtonPressed, now)) {      // <--- ADD THIS
+        if (buttonDetect(dButtonPressed, now)) {      
             timeLastPressed = now;
             menuTimeout = now;
-            currentState = WEATHER_SCREEN;
+            currentState = LOCAL_TEMP_SCREEN;
+        }
+        if (buttonDetect(eButtonPressed, now)) {
+            timeLastPressed = now;
+            menuTimeout = now;
+            currentState = WEATHER_SCREEN;`
         }
         break;
       case WEATHER_SCREEN:
         displayBuilder((char*)weatherTool.getDisplayString().c_str(), toDisplayWords, false);
-        
-        // Auto-exit after 5 seconds, or if they press the encoder button/home button
+       
         if ((now - menuTimeout > 5000) || buttonDetect(homeButtonPressed, now) || (buttonPressed && (now - timeLastPressed > 250))) {
             timeLastPressed = now;
             currentState = CLOCK_CLEAN;
@@ -970,6 +1007,14 @@ void loop() {
         break;
       }
 
+      case LOCAL_TEMP_SCREEN:
+        displayBuilder((char*)getLocalTempDisplay().c_str(), toDisplayWords, false);
+        
+        if ((now - menuTimeout > 5000) || buttonDetect(homeButtonPressed, now) || (buttonPressed && (now - timeLastPressed > 250))) {
+            timeLastPressed = now;
+            currentState = CLOCK_CLEAN;
+        }
+        break;
       case WEATHER_MENU: {
         if (menuIndex < 0) menuIndex = 2;
         if (menuIndex > 2) menuIndex = 0;
