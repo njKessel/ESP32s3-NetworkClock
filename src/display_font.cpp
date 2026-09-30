@@ -54,7 +54,6 @@ void initFontTable() {
     fontTable['|'] =                                                                         SEG_M |                         SEG_S;
     fontTable['}'] =                 SEG_C | SEG_D |                                                                                 SEG_U;
     fontTable['~'] = SEG_A |                                                                                                         SEG_U;
-    fontTable['°'] =         SEG_B | SEG_C |                                                 SEG_M |         SEG_P;
 
     fontTable['A'] = SEG_A | SEG_B | SEG_C | SEG_D |                 SEG_G | SEG_H |                         SEG_P |                         SEG_U;
     fontTable['B'] = SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F |                         SEG_M |         SEG_P |         SEG_S;
@@ -111,13 +110,14 @@ void initFontTable() {
     fontTable['z'] = SEG_A | SEG_B |                 SEG_E | SEG_F |                                 SEG_N |                         SEG_T;
 
     // Weather
-    fontTable[128] =                                                                 SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U;
-    fontTable[129] =                                 SEG_E | SEG_F | SEG_G |         SEG_K | SEG_M | SEG_N | SEG_P | SEG_R |                 SEG_U;
-    fontTable[130] = SEG_A |                         SEG_E | SEG_F | SEG_G |         SEG_K | SEG_M |                 SEG_R |                 SEG_U;
-    fontTable[131] = SEG_A | SEG_B | SEG_C | SEG_D |                 SEG_G | SEG_H |                         SEG_P | SEG_R |         SEG_T | SEG_U;
-    fontTable[132] = SEG_A | SEG_B | SEG_C | SEG_D |         SEG_F |         SEG_H |                                                 SEG_T;
-    fontTable[133] = SEG_A | SEG_B | SEG_C | SEG_D |                         SEG_H |                                 SEG_R | SEG_S | SEG_T;
-    fontTable[134] = SEG_A | SEG_B |                 SEG_E |                                                                                 SEG_U;
+    fontTable[1] =                                                                 SEG_K | SEG_M | SEG_N | SEG_P | SEG_R | SEG_S | SEG_T | SEG_U;
+    fontTable[2] =                                 SEG_E | SEG_F | SEG_G |         SEG_K | SEG_M | SEG_N | SEG_P | SEG_R |                 SEG_U;
+    fontTable[3] = SEG_A |                         SEG_E | SEG_F | SEG_G |         SEG_K | SEG_M |                 SEG_R |                 SEG_U;
+    fontTable[4] = SEG_A | SEG_B | SEG_C | SEG_D |                 SEG_G | SEG_H |                         SEG_P | SEG_R |         SEG_T | SEG_U;
+    fontTable[5] = SEG_A | SEG_B | SEG_C | SEG_D |         SEG_F |         SEG_H |                                                 SEG_T;
+    fontTable[6] = SEG_A | SEG_B | SEG_C | SEG_D |                         SEG_H |                                 SEG_R | SEG_S | SEG_T;
+    fontTable[7] = SEG_A | SEG_B |                 SEG_E |                                                                                 SEG_U;
+    fontTable[8] =         SEG_B | SEG_C |                                                 SEG_M |         SEG_P;
 }
 
 enum anodeBit : uint64_t {
