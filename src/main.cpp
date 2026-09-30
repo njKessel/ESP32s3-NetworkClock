@@ -38,6 +38,7 @@
 #include "features/clock.h"                               // Clock class for the clock page's logic 
 #include "features/keyboard.h"                            // Text input class, primarily used for networking SSID/Password inputs
 #include "features/networking.h"                          // Networking class for setting up WiFi
+#include "features/weather.h"
 
 // Settings
 #include "settings/brightness.h"                          // Brightness settings menu class
@@ -55,6 +56,7 @@ Brightness brightnessTool;
 KeyboardInput keyboardTool(32);
 Networking networkTool;
 SetTime setTimeTool;
+Weather weatherTool;
 ////////////////////////////////////////////////////////////
 // DEBUG ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -75,8 +77,10 @@ enum SystemState {
   BRIGHTNESS,                                             // Brightness configuration, 8 levels + auto
   KEYBOARD_ENTRY,                                         // Keyboard used for network config
   NETWORK_MENU,                                           // Network scan and config menu
-  MANUAL_TIME,
-  LOCAL_TEMP_SCREEN
+  MANUAL_TIME,                                            // Manual time config screen
+  LOCAL_TEMP_SCREEN,
+  WEATHER_SCREEN,                                         // Weather screen
+  WEATHER_MENU                                            // Weather configuration
 };
 SystemState currentState = CLOCK_CLEAN;                   // Have the clock start at the CLOCK_CLEAN page
 SystemState lastState = currentState;
@@ -122,6 +126,10 @@ bool eButtonPressed    =  false;
 // Menu ////////////////////////////////////////////////////
 volatile int menuIndex = 0;                               // Menu index tracking
 int keyboardMode = 0;                                     // Track if you are in a keyboard input
+
+// Weather /////////////////////////////////////////////////
+String tempWeatherApi = "";
+String tempWeatherLat = "";
 
 // Brightness //////////////////////////////////////////////
 uint8_t originalBrightness;                               // Tracks what the current brightness level is
@@ -344,6 +352,7 @@ void setup() {
   Serial.println("DBG 002 SETUP: Display latch pin.");
   pinMode(PIN_LIGHT, ANALOG);
   Serial.println("DBG 003 SETUP: Light sense pin.");
+  weatherTool.begin();
 
   const int oeChannel = 0; 
   ledcSetup(oeChannel, 5000, 8);
@@ -453,12 +462,12 @@ void loop() {
         }
     } 
 
-    else if (currentState == NAV_MODE || currentState == SETTINGS) {
+    else if (currentState == NAV_MODE || currentState == SETTINGS || currentState == WEATHER_MENU) {
         if (movement != lastEncoderRead) {
             if (movement > lastEncoderRead) menuIndex++; else menuIndex--;
             lastEncoderRead = movement;
         }
-    } 
+    }
 
     else if (currentState == ALARM) {
       if (movement != lastEncoderRead) {
@@ -546,7 +555,7 @@ void loop() {
     }
     // Timeout
     unsigned long timeoutDuration = 10000; //= (currentState == ALARM) ? 20000 : ((currentState == NAV_MODE) ? 10000 : 5000);                              // IF ON SETTINGS MENU SET TIMEOUT TO 10s, IF ON CLOCK SET TIMEOUT TO 5s, if in alarm settings 20s
-    if (currentState == ALARM || currentState == MANUAL_TIME) {timeoutDuration = 20000;}
+    if (currentState == ALARM || currentState == MANUAL_TIME || currentState == WEATHER_MENU) {timeoutDuration = 20000;}
     else if (currentState == NAV_MODE) {timeoutDuration = 5000;}
     else if (currentState == SETTINGS) {timeoutDuration = 20000;}
     
@@ -628,8 +637,20 @@ void loop() {
             menuTimeout = now;
             currentState = LOCAL_TEMP_SCREEN;
         }
+        if (buttonDetect(eButtonPressed, now)) {
+            timeLastPressed = now;
+            menuTimeout = now;
+            currentState = WEATHER_SCREEN;`
+        }
         break;
-
+      case WEATHER_SCREEN:
+        displayBuilder((char*)weatherTool.getDisplayString().c_str(), toDisplayWords, false);
+       
+        if ((now - menuTimeout > 5000) || buttonDetect(homeButtonPressed, now) || (buttonPressed && (now - timeLastPressed > 250))) {
+            timeLastPressed = now;
+            currentState = CLOCK_CLEAN;
+        }
+        break;
       case NAV_MODE:                                                                                  // IF ON NAV CLOCK PAGE
         if (menuIndex < 0) menuIndex = 4;                                                             // IF MENU IS LESS THAN 0 CORRECT TO 1
         if (menuIndex > 4) menuIndex = 0;                                                             // IF MENU IS MORE THAN 1 CORRECT TO 0
@@ -645,6 +666,11 @@ void loop() {
             timeLastPressed = now;
             clockTool.onModButtonPress();
             menuTimeout = now;
+          }
+          if (buttonDetect(eButtonPressed, now)) {      // <--- ADD THIS
+            timeLastPressed = now;
+            menuTimeout = now;
+            currentState = WEATHER_SCREEN;
           }
         } else if (menuIndex == 1) {
           displayBuilder(" STOPWATCH  ", toDisplayWords, true);
@@ -783,8 +809,8 @@ void loop() {
         break;
       }
       case SETTINGS: {
-        if (menuIndex < 0) menuIndex = 3;
-        if (menuIndex > 3) menuIndex = 0;
+        if (menuIndex < 0) menuIndex = 4;
+        if (menuIndex > 4) menuIndex = 0;
 
         if (menuIndex == 0) {
           displayBuilder(" TIME ZONE  ", toDisplayWords, true);                                       // IF NOT ON THE TIME PAGE THEN GET toDisplayWords FOR TIME ZONE OPTION
@@ -824,6 +850,15 @@ void loop() {
             timeLastPressed = now;
             menuTimeout = now;
           }
+        
+        } else if (menuIndex == 4) {
+          displayBuilder(" WEATHER    ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            timeLastPressed = now;
+            menuIndex = 0;
+            currentState = WEATHER_MENU;
+            menuTimeout = now;
+          }
         }
         break;
       }
@@ -857,21 +892,38 @@ void loop() {
         displayBuilder((char*)keyboardTool.getDisplayString().c_str(), toDisplayWords, false);
 
         if (buttonDetect(homeButtonPressed, now)) {
-            timeLastPressed = now;
-            std::string finalInput = keyboardTool.getEnteredString();
-            
-            if (keyboardMode == 1) { 
-                networkTool.setTargetSSID(finalInput);
-                keyboardTool.reset();
-                keyboardMode = 2; 
-            } else if (keyboardMode == 2) { 
-                networkTool.setTargetPassword(finalInput);
-                networkTool.connectToTarget();
-                currentState = NETWORK_MENU;
-                keyboardMode = 0; 
-            } else { 
-                currentState = CLOCK_CLEAN; 
-            }
+          timeLastPressed = now;
+          std::string finalInput = keyboardTool.getEnteredString();
+          if (keyboardMode == 1) { 
+              networkTool.setTargetSSID(finalInput);
+              keyboardTool.reset();
+              keyboardMode = 2; 
+          } else if (keyboardMode == 2) { 
+              networkTool.setTargetPassword(finalInput);
+              networkTool.connectToTarget();
+              currentState = NETWORK_MENU;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 3) {
+              String apiStr = String(finalInput.c_str());
+              apiStr.toLowerCase();
+              weatherTool.saveApiKey(apiStr);
+              
+              currentState = WEATHER_MENU;
+              menuIndex = 0;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 4) {
+              weatherTool.saveLat(String(finalInput.c_str()));
+              currentState = WEATHER_MENU;
+              menuIndex = 1;
+              keyboardMode = 0; 
+          } else if (keyboardMode == 5) {
+              weatherTool.saveLon(String(finalInput.c_str()));
+              currentState = WEATHER_MENU;
+              menuIndex = 2;
+              keyboardMode = 0; 
+          } else { 
+              currentState = CLOCK_CLEAN; 
+          }
         }
 
         if (buttonPressed && (now - timeLastPressed > 250)) {
@@ -914,7 +966,6 @@ void loop() {
 
         displayBuilder((char*)networkTool.getDisplayString().c_str(), toDisplayWords, showArrows);
 
-        // Auto-Exit to Clock when Connected OR Failed
         static unsigned long statusTimer = 0;
         if (netState == NET_CONNECTED || netState == NET_FAILED) {
             if (statusTimer == 0) statusTimer = now;
@@ -964,6 +1015,46 @@ void loop() {
             currentState = CLOCK_CLEAN;
         }
         break;
+      case WEATHER_MENU: {
+        if (menuIndex < 0) menuIndex = 2;
+        if (menuIndex > 2) menuIndex = 0;
+
+        if (menuIndex == 0) {
+          displayBuilder(" API KEY    ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 3;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        } else if (menuIndex == 1) {
+          displayBuilder(" LATITUDE   ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 4;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        } else if (menuIndex == 2) {
+          displayBuilder(" LONGITUDE  ", toDisplayWords, true);
+          if (buttonDetect(buttonPressed, now)) {
+            currentState = KEYBOARD_ENTRY;
+            keyboardTool.reset();
+            keyboardMode = 5;
+            timeLastPressed = now;
+            menuTimeout = now;
+          }
+        }
+
+        if (buttonDetect(modButtonPressed, now)) {
+            timeLastPressed = now;
+            menuIndex = 4;
+            currentState = SETTINGS;
+        }
+        break;
+      }
     }
   }
   renderDisplay(toDisplayWords);                                                                      // RENDER CURRENT SCREEN STATE
