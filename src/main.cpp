@@ -304,7 +304,7 @@ String getLocalTempDisplay() {
 
         char buffer[24];
         // Uses the \x08 degree symbol from font table
-        snprintf(buffer, sizeof(buffer), " LCL   %2d\x08""F ", displayTemp);
+        snprintf(buffer, sizeof(buffer), " LOCAL %2d\x08""F ", displayTemp);
         return String(buffer);
     }
     return " NO SENSOR  ";
@@ -640,7 +640,7 @@ void loop() {
         if (buttonDetect(eButtonPressed, now)) {
             timeLastPressed = now;
             menuTimeout = now;
-            currentState = WEATHER_SCREEN;`
+            currentState = WEATHER_SCREEN;
         }
         break;
       case WEATHER_SCREEN:
