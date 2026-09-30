@@ -438,6 +438,8 @@ void loop() {
   bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
 
   WiFiLight = networkTool.isConnected() ? 1 : 0;
+  timerLight = timerTool.isAnyTimerRunning() ? 1 : 0;
+  alarmLight = alarmTool.isAlarmInNextHour() ? 1 : 0;
 
   static bool timeInitialized = false;
   if (WiFiLight == 1 && !timeInitialized) {
