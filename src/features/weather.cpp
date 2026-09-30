@@ -120,6 +120,19 @@ void Weather::weatherTask(void *pvParameters) {
 String Weather::getDisplayString() {
     char displayBuffer[24]; 
     if (!lastFetchSuccessful) return " NO WEATHER ";
-    snprintf(displayBuffer, sizeof(displayBuffer), " %c     %2d\x08""F ", currentIcon, currentTemp);
+
+    const char* conditionStr = "---";
+    switch (currentIcon) {
+        case '\x01': conditionStr = "SUN"; break;
+        case '\x02': conditionStr = "PCL"; break;
+        case '\x03': conditionStr = "CLD"; break;
+        case '\x04': conditionStr = "RAI"; break;
+        case '\x05': conditionStr = "THR"; break;
+        case '\x06': conditionStr = "SNO"; break;
+        case '\x07': conditionStr = "FOG"; break;
+    }
+
+    snprintf(displayBuffer, sizeof(displayBuffer), " %c %s %2d\x08""F ", currentIcon, conditionStr, currentTemp);
+    
     return String(displayBuffer);
 }
