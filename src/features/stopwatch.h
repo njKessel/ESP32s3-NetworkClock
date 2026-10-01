@@ -11,7 +11,7 @@ class Stopwatch {
 
     public:
         Stopwatch();
-        void toggle();
+        void toggle();                  // On/off
         void reset();
         String getFormattedTime();
 };

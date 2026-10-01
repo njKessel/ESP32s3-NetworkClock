@@ -103,24 +103,32 @@ String Clock::getClockDisplay() {
         localtime_r(&now, &ti); 
         
         if (rtcInitialized) {
+            static bool initialSyncDone = false;
             unsigned long currentMillis = millis();
-            if (currentMillis - lastRTCSync >= 300000) {    // 300,000 ms = 5 minutes
-                lastRTCSync = currentMillis;
-
+            
+                                                            // Sync immediately once NTP is valid, then only every 12 hours (43,200,000 ms)
+            if (!initialSyncDone || (currentMillis - lastRTCSync >= 43200000)) {    
+                
                 if (globalWiFiConnected && ti.tm_year >= 116) {
-                                                            // Wi-Fi is active and NTP is synced: Update RTC from ESP32
+                    lastRTCSync = currentMillis;
+                    initialSyncDone = true;                 // Lock out the rapid syncing
+                    
                                                             // extract the UTC time so timezones don't corrupt the RTC
                     struct tm *utc_ti = gmtime(&now);
                     RTC.adjust(DateTime(utc_ti->tm_year + 1900, utc_ti->tm_mon + 1, utc_ti->tm_mday, utc_ti->tm_hour, utc_ti->tm_min, utc_ti->tm_sec));
                     Serial.println("DBG 065 CLOCK: Synced hardware RTC to NTP time");
                 } 
-                else if (!globalWiFiConnected) {            // If there is no wifi correct to the RTC time
+                else if (!globalWiFiConnected && !initialSyncDone) {
+                                                            // If there is no wifi on boot, correct to the RTC time
                     DateTime rtcNow = RTC.now();
                     if (rtcNow.year() >= 2024) {
                         struct timeval tv;
                         tv.tv_sec = rtcNow.unixtime();
                         tv.tv_usec = 0;
                         settimeofday(&tv, NULL);
+                        
+                        lastRTCSync = currentMillis;
+                        initialSyncDone = true; 
                         Serial.println("DBG 066 CLOCK: Corrected ESP32 clock from RTC");
                     }
                 }
