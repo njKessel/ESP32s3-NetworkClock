@@ -197,3 +197,7 @@ void Clock::setManualTime(int year, int month, int day, int hour, int minute) {
         Serial.println("DBG 067 CLOCK: Manual time saved to RTC");
     }
 }
+
+bool Clock::is24Hour() {
+    return hour24;
+}

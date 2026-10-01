@@ -37,6 +37,7 @@ class Clock {
         String getClockDisplay();                       // Build the display
         void setManualTime(int year, int month, int day, int hour, int minute);
                                                         // Handle manual time setting
+        bool is24Hour();
 
 };
 
