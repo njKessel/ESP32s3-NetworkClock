@@ -42,6 +42,8 @@ class Alarm {
         String getTimeString(bool hour24);      // Display string creator that handles both 12 and 24 hour time
 
         bool shouldRing(int alarmIndex);        // Check if the alarm should be ringing
+
+        bool isAlarmInNextHour();               // Check if an alarm is coming soon
 };
 
 

@@ -193,5 +193,13 @@ void displayBuilder(const char* str, uint64_t* displayWords, bool navDelay) {
         if (WiFiLight == 1) {
             displayWords[dIdx] |= STATUS_LED1;
         }
+        extern int alarmLight;
+        if (alarmLight == 1) {
+            displayWords[dIdx] |= STATUS_LED2;
+        }
+        extern int timerLight;
+        if (timerLight == 1) {
+            displayWords[dIdx] |= STATUS_LED3;
+        }
     }
 }

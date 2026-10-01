@@ -48,6 +48,8 @@ class Timer {
         String getTimerDisplay();
 
         bool shouldRing(int timerIndex);
+
+        bool isAnyTimerRunning();
 };
 
 #endif

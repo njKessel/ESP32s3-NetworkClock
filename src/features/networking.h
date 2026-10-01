@@ -37,22 +37,23 @@ class Networking {
     public:
         Networking();
 
-        void begin();                           
+        void begin();                           // Initialize saved creds
         void saveCredentials();                 
-        void factoryReset();                    
+        void factoryReset();                    // Reset creds
 
-        void onKnobTurn(int direction);
+        void onKnobTurn(int direction);         // Move through menu
         void onButtonPress();
-        void reset();                           
+        void reset();                           // Reset menu state 
 
         std::string getDisplayString();         
         NetworkMenuState getMenuState();        
         
-        void setTargetSSID(std::string ssid);
+        void setTargetSSID(std::string ssid);   // Set SSID
         void setTargetPassword(std::string pass);
+                                                // Set password
         
-        void startScan();                       
-        void connectToTarget();                 
+        void startScan();                       // Scan for networks
+        void connectToTarget();                 // Connect to network
         
         bool isConnected();
         std::string getCurrentSSID();

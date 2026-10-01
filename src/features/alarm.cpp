@@ -215,3 +215,36 @@ bool Alarm::shouldRing(int alarmIndex) {
     }
     return false;
 }
+
+// Next Hour Check //// ////////////////////////////////////
+bool Alarm::isAlarmInNextHour() {
+    time_t now;
+    time(&now);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo); 
+
+    if (timeinfo.tm_year < 116) return false;             // Fail fast if time is invalid
+
+    int currentTotalMins = (timeinfo.tm_hour * 60) + timeinfo.tm_min;
+    int currentDay = timeinfo.tm_wday;
+
+    for (int i = 0; i < 3; i++) {
+        int alarmTotalMins = (table[i].alarmHours * 60) + table[i].alarmMinutes;
+        int diff = alarmTotalMins - currentTotalMins;
+        int dayToCheck = currentDay;
+
+        if (diff < 0) {
+            diff += 1440;                                 // Add 24 hours worth of minutes
+            dayToCheck = (currentDay + 1) % 7;            // Shift to check tomorrow's bit
+        }
+
+                                                          
+        if (diff >= 0 && diff <= 60) {                    // If the alarm is within the next 60 minutes (including right now)
+                                                          
+            if ((table[i].alarmDays >> dayToCheck) & 1) { // Check if it is enabled for the target day
+                return true;
+            }
+        }
+    }
+    return false;
+}

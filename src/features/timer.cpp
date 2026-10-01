@@ -311,3 +311,7 @@ bool Timer::shouldRing(int timerIndex) {
     
     return false;
 }
+
+bool Timer::isAnyTimerRunning() {
+    return runningT1 || runningT2 || runningT3;
+}

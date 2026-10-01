@@ -1,15 +1,24 @@
+//////////////////////////////////////////////////////////////
+// INCLUDES  /////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 #include "networking.h"
 
 volatile bool globalWiFiConnected = false;
 
-void WiFiEvent(WiFiEvent_t event) {
-    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
-        globalWiFiConnected = true;
+//////////////////////////////////////////////////////////////
+// ASYNC EVENTS //////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+void WiFiEvent(WiFiEvent_t event) {                         // The ESP32 Wi-Fi stack runs on a background FreeRTOS task. 
+    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {           // This callback lets us track connection state instantly 
+        globalWiFiConnected = true;                         // without blocking or constantly polling in the main loop.
     } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
         globalWiFiConnected = false;
     }
 }
 
+//////////////////////////////////////////////////////////////
+// INITIALIZATION ////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 Networking::Networking() {
     menuState = NET_INIT;
     listIndex = 0;
@@ -24,7 +33,7 @@ void Networking::begin() {
     WiFi.onEvent(WiFiEvent);
     
     WiFi.mode(WIFI_STA);
-    WiFi.disconnect(false, true); 
+    WiFi.disconnect(false, true);                           // Clear any residual cached connections in the ESP-IDF base
     delay(50);
     
     prefs.begin("wifi", false);
@@ -53,7 +62,7 @@ void Networking::factoryReset() {
     prefs.clear();
     savedSSID = "";
     savedPassword = "";
-    WiFi.disconnect(true, true);
+    WiFi.disconnect(true, true);                            // Erase credentials and force radio disconnect
 }
 
 void Networking::reset() {
@@ -62,6 +71,9 @@ void Networking::reset() {
     scannedNetworks.clear();
 }
 
+//////////////////////////////////////////////////////////////
+// MENU NAVIGATION ///////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 void Networking::onKnobTurn(int direction) {
     if (menuState == NET_SELECT_SSID && !scannedNetworks.empty()) {
         listIndex += direction;
@@ -84,12 +96,15 @@ void Networking::onButtonPress() {
     }
 }
 
+//////////////////////////////////////////////////////////////
+// NETWORK OPERATIONS ////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 void Networking::startScan() {
     Serial.println("DBG 045 NETWK: Starting Network Scan");
     menuState = NET_SCANNING;
     scannedNetworks.clear();
     
-    networkCount = WiFi.scanNetworks();
+    networkCount = WiFi.scanNetworks();                     // Note: This is blocking. UI will freeze until scan completes.
     
     if (networkCount > 0) {
         for (int i = 0; i < networkCount; ++i) {
@@ -97,7 +112,7 @@ void Networking::startScan() {
         }
     }
     
-    scannedNetworks.push_back("CUSTOM");
+    scannedNetworks.push_back("CUSTOM");                    // Always provide a fallback for hidden networks
     
     listIndex = 0;
     menuState = NET_SELECT_SSID;
@@ -133,7 +148,12 @@ bool Networking::isCustomSelected() {
     return scannedNetworks[listIndex] == "CUSTOM";
 }
 
+//////////////////////////////////////////////////////////////
+// STATE & DISPLAY ///////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 NetworkMenuState Networking::getMenuState() {
+                                                            // This acts as the logic "tick" for connection attempts,
+                                                            // managing the 10-second timeout rather than just returning state.
     if (menuState == NET_CONNECTING) {
         if (globalWiFiConnected) {
             if (millis() - connectionStartTime >= 1000) {
@@ -161,7 +181,7 @@ std::string Networking::getDisplayString() {
             if (!scannedNetworks.empty()) {
                 text = scannedNetworks[listIndex];
                 
-                if (text.length() > 8) {
+                if (text.length() > 8) {                    // Cap at 8 chars to leave room for the "<" and ">" nav arrows
                     text = text.substr(0, 8);
                 }
             } else {
@@ -173,6 +193,7 @@ std::string Networking::getDisplayString() {
         case NET_FAILED:        text = "FAILED"; break;
     }
 
+                                                            // Calculate dynamic center-padding
     int padding = targetLength - text.length();
     if (padding > 0) {
         int padLeft = padding / 2;

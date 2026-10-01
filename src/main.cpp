@@ -95,9 +95,6 @@ unsigned long menuTimeout = 0;
 uint64_t toDisplayWords[12];                              // Initializes the array of 64-bit integers containing the segments and decimal point, mux bits, and status LED bits
 unsigned long lastUpdate = 0;                             // Time since last screen update
 
-// Clock ///////////////////////////////////////////////////
-bool hour24;                                              // Boolean for handling if the clock is in 24-hour (true) or 12-hour mode (false)
-
 // Notifications ///////////////////////////////////////////
 int activeNotification = -1;                              // Set no current notifications
 
@@ -109,27 +106,13 @@ int timerLight = 0;                                       // Default timer light
 // Encoder /////////////////////////////////////////////////
 volatile long encoderRawCount = 0;                        // Init the number of pulses from the PEC11R
 long lastEncoderRead = 0;                                 // Since last encoder read timer
-bool lastEncState = false;                                // Init the previous encoder movement
 volatile bool encoderMoved = false;                       // Init tracking if the encoder moved recently
 int timeLastPressed = 0;                                  // Track time since the last encoder press for debounce
 int encoderDebug_timeLastPressed = 0;                     // Debug for encoder press
 
-// Buttons /////////////////////////////////////////////////
-bool homeButtonPressed =  false;
-bool modButtonPressed  =  false;
-bool aButtonPressed    =  false;
-bool bButtonPressed    =  false;
-bool cButtonPressed    =  false;
-bool dButtonPressed    =  false;
-bool eButtonPressed    =  false;
-
 // Menu ////////////////////////////////////////////////////
 volatile int menuIndex = 0;                               // Menu index tracking
 int keyboardMode = 0;                                     // Track if you are in a keyboard input
-
-// Weather /////////////////////////////////////////////////
-String tempWeatherApi = "";
-String tempWeatherLat = "";
 
 // Brightness //////////////////////////////////////////////
 uint8_t originalBrightness;                               // Tracks what the current brightness level is
@@ -321,18 +304,18 @@ String getLocalTempDisplay() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
+  // Serial & Debug Initialization ///////////////////////////////////////////////
   Serial.begin(115200);                                                         // START SERIAL MONITOR AT BAUD RATE 115200
   Serial.println("DBG 001 SETUP: Serial Monitor Online");
   Serial.println("DBG 000 SETUP: Setup begin");
   uint32_t start = millis();
-  while (!Serial && (millis() - start < 3000)) {
+  while (!Serial && (millis() - start < 3000)) {                                // Wait up to 3 seconds for serial attach
     delay(10); 
   }
   
-  
-
-  pinMode(PIN_ENCODER_PUSH, INPUT);                                      // DEFINE ENCODER BUTTON AS INPUT
-  if (digitalRead(PIN_ENCODER_PUSH) == LOW) {
+  // Hardware Checks & Factory Reset /////////////////////////////////////////////
+  pinMode(PIN_ENCODER_PUSH, INPUT);                                             // DEFINE ENCODER BUTTON AS INPUT
+  if (digitalRead(PIN_ENCODER_PUSH) == LOW) {                                   // If button held on boot, wipe preferences
     Serial.println("DBG 0F0 RESET: Factory reset");
     displayBuilder(" RESETTING  ", toDisplayWords, false);
     
@@ -341,37 +324,45 @@ void setup() {
     networkTool.factoryReset();
     
     unsigned long startReset = millis();
-    while (millis() - startReset < 2000) {
+    while (millis() - startReset < 2000) {                                      // Hold reset message on screen for 2s
       renderDisplay(toDisplayWords); 
     }
   }
+
+  // Tool & Feature Initialization ///////////////////////////////////////////////
   alarmTool.begin();
   timerTool.begin();
   networkTool.begin();
-  pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
-  Serial.println("DBG 002 SETUP: Display latch pin.");
-  pinMode(PIN_LIGHT, ANALOG);
-  Serial.println("DBG 003 SETUP: Light sense pin.");
   weatherTool.begin();
 
+  // Display & Brightness Setup (PWM) ////////////////////////////////////////////
+  pinMode(PIN_LATCH, OUTPUT);                                                   // DEFINE LATCH AS OUTPUT
+  Serial.println("DBG 002 SETUP: Display latch pin.");
+  
+  pinMode(PIN_LIGHT, ANALOG);
+  Serial.println("DBG 003 SETUP: Light sense pin.");
+
   const int oeChannel = 0; 
-  ledcSetup(oeChannel, 5000, 8);
-  ledcAttachPin(PIN_OE, oeChannel);                                                  // DEFINE OE AS OUTPUT
+  ledcSetup(oeChannel, 5000, 8);                                                // 5kHz PWM, 8-bit resolution
+  ledcAttachPin(PIN_OE, oeChannel);                                             // DEFINE OE AS OUTPUT
   Serial.println("DBG 004 SETUP: Display Output Enable Pin (Brightness).");
 
   setDisplayBrightness(brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT)));
   originalBrightness = brightnessTool.getSelectedBrightness(analogRead(PIN_LIGHT));
   Serial.println("DBG 020 CALIB: Brightness initial callibration.");
 
+  initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
+  
+  // SPI Bus Initialization //////////////////////////////////////////////////////
   SPI.begin(PIN_SCK, -1, PIN_COPI, PIN_LATCH);                                  // INDICATE WHAT PINS ARE WHICH TO SPI FUNCTIONS
   Serial.println("DBG 007 SETUP: Display SPI configurated");
+  
   pinMode(PIN_LATCH_BUTTON, OUTPUT);
   digitalWrite(PIN_LATCH_BUTTON, HIGH); 
-
-  buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);
+  buttonSPI.begin(PIN_SCK_BUTTON, PIN_COPI_BUTTON, 16, -1);                     // Secondary HSPI bus for button polling
   Serial.println("DBG 008 SETUP: Button SPI configurated");
 
-  initFontTable();                                                              // BRING FONT TABLE INTO MEMORY
+  // Encoder & Timer Setup ///////////////////////////////////////////////////////
   pinMode(PIN_ENCODER_A, INPUT_PULLUP);                                         // DEFINE ENCODER ROTATION DETECTION
   pinMode(PIN_ENCODER_B, INPUT_PULLUP);               
   Serial.println("DBG 009 SETUP: Encoder rotation pins configured");
@@ -379,10 +370,12 @@ void setup() {
   setupEncoderTimer();                                                          // START TIMER FOR DEBOUNCE
   Serial.println("DBG 00A SETUP: Encoder SW Debounce configured");
   
+  // Time & I2C Setup ////////////////////////////////////////////////////////////
   displayBuilder("  NTP SYNC  ", toDisplayWords, false);
-  // timeUtil.initTime("EST5EDT");                                                          // DEFAULT TO EST TIME ZONE AND SYNC TIME
-  Wire.begin(PIN_SDA, PIN_SCL);
-  clockTool.begin();
+  
+  Wire.begin(PIN_SDA, PIN_SCL);                                                 // Start I2C bus for RTC and Temp Sensor
+  clockTool.begin();                                                            // Pulls RTC time into ESP32 system clock
+  
   Serial.println("DBG 002 SETUP: End of setup");
 }
 
@@ -392,11 +385,15 @@ void setup() {
             ///   ///   ///   ///   ///      ///      ///   ///
             ///   ///   ///   ///   ///   /////////   ///   ///
 
+////////////////////////////////////////////////////////////////////////////////
+// MAIN LOOP ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void loop() {
-  unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
-  // Per minute report
+  // Core Timing & Diagnostics /////////////////////////////////////////////////
+  unsigned long now = millis();                                               // TIMESTAMP START OF LOOP
+  
   static unsigned long timeSinceLastPMR = 0;
-  if(pmrEnable && (now - timeSinceLastPMR > 60000)){
+  if(pmrEnable && (now - timeSinceLastPMR > 60000)){                          // Trigger Per Minute Report (PMR)
     Serial.println("DBG 000 PMINR | PER MINUTE REPORT");
     Serial.println("DBG 000 PMINR | -----------------");
     Serial.print(  "DBG 000 PMINR | UPTIME: ");           Serial.println(millis());
@@ -405,31 +402,32 @@ void loop() {
     timeSinceLastPMR = now;
   }
 
-
-
+  // State Change Tracking /////////////////////////////////////////////////////
   if (lastState != currentState) {
     Serial.print("DBG 030 STATE: State change to ");
     Serial.println(SystemState(currentState));
   }
   lastState = currentState;
-  uint16_t lightSensorData = analogRead(PIN_LIGHT);
 
-  bool hasMoved = encoderMoved;
+  // Sensor & Encoder Polling //////////////////////////////////////////////////
+  uint16_t lightSensorData = analogRead(PIN_LIGHT);                           // Poll ambient light for auto-brightness
 
+  bool hasMoved = encoderMoved;                                               // Capture volatile encoder state
   if (hasMoved) {
-    encoderMoved = false;
+    encoderMoved = false;                                                     // Reset encoder flag after capture
   }
-  bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
+  
+  bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                // DETERMINE STATE OF ENCODER BUTTON
 
   if (buttonPressed && (now - encoderDebug_timeLastPressed > 250)) {
     Serial.println("DBG 010 INPUT: Encoder Button Detect");
     encoderDebug_timeLastPressed = now;
   }
 
+  // Panel Button Polling (74HC165) ////////////////////////////////////////////
+  uint8_t currentButtonStates = pullButtonStates();                           // Ingest all 8 bits from the shift register
 
-  uint8_t currentButtonStates = pullButtonStates();
-
-  bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
+  bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);    // Active-LOW evaluation for pulled-up buttons
   bool modButtonPressed  = (checkButton(currentButtonStates, 1) == false);
   bool aButtonPressed    = (checkButton(currentButtonStates, 2) == false);
   bool bButtonPressed    = (checkButton(currentButtonStates, 3) == false);
@@ -437,15 +435,51 @@ void loop() {
   bool dButtonPressed    = (checkButton(currentButtonStates, 5) == false);
   bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
 
-  WiFiLight = networkTool.isConnected() ? 1 : 0;
+  // Button Debugging //////////////////////////////////////////////////////////
+  static unsigned long panelDebug_timeLastPressed = 0;                        // Isolated debounce timer for debug prints
+  
+  if (now - panelDebug_timeLastPressed > 250) {
+    if (homeButtonPressed) { 
+        Serial.println("DBG 011 INPUT: Home Button Detect"); 
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (modButtonPressed) { 
+        Serial.println("DBG 012 INPUT: Mod Button Detect");  
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (aButtonPressed) { 
+        Serial.println("DBG 013 INPUT: A Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (bButtonPressed) { 
+        Serial.println("DBG 014 INPUT: B Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (cButtonPressed) { 
+        Serial.println("DBG 015 INPUT: C Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (dButtonPressed) { 
+        Serial.println("DBG 016 INPUT: D Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (eButtonPressed) { 
+        Serial.println("DBG 017 INPUT: E Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+  }
+
+  // Indicator Lights & Background Tasks ///////////////////////////////////////
+  WiFiLight  = networkTool.isConnected() ? 1 : 0;                             // Update LED mux 
+  timerLight = timerTool.isAnyTimerRunning() ? 1 : 0;
+  alarmLight = alarmTool.isAlarmInNextHour() ? 1 : 0;
 
   static bool timeInitialized = false;
-  if (WiFiLight == 1 && !timeInitialized) {
+  if (WiFiLight == 1 && !timeInitialized) {                                   // NTP sync on first connection
       Serial.println("DBG 095 NETWK: WiFi Connected, starting NTP sync");
       timeUtil.initTime("EST5EDT");
       timeInitialized = true;
   }
-
   // 1. INPUTS
   if (hasMoved) {
     menuTimeout = now; 
@@ -623,7 +657,6 @@ void loop() {
         displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, false);                // RETURNS BUILT toDisplayWords WITHOUT NAV ARROWS
 
         if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
-          lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
           clockTool.onButtonPress();
           timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
         }
@@ -658,7 +691,6 @@ void loop() {
         if (menuIndex == 0) {                                                                         // IF ON TIME PAGE
           displayBuilder((char*)clockTool.getClockDisplay().c_str(), toDisplayWords, true);                                                                     // GET toDisplayWords FOR TIME WITH NAV ARROWS
           if (buttonPressed && (now - timeLastPressed > 250)) {                                         // IF THE BUTTON IS PRESSED AND AFTER 250ms
-            lastEncState = !lastEncState;                                                               // SWAP BUTTON STATE (TOGGLE SWITCH)
             clockTool.onButtonPress();
             timeLastPressed = now;                                                                      // TIMESTAMP BUTTON PRESS
           }
@@ -748,7 +780,7 @@ void loop() {
         break;
       }
       case ALARM: {
-        displayBuilder((char*)alarmTool.getAlarmDisplay(hour24).c_str(), toDisplayWords, true);
+        displayBuilder((char*)alarmTool.getAlarmDisplay(clockTool.is24Hour()).c_str(), toDisplayWords, true);
 
         if (buttonPressed && (now - timeLastPressed > 250)) {
           timeLastPressed = now;

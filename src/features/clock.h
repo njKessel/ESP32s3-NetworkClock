@@ -7,7 +7,7 @@
 
 class Clock {
     private:
-        MCP7940_Class RTC;
+        MCP7940_Class RTC;                          // Bring in RTC functions
         unsigned long lastRTCSync;
         bool rtcInitialized;
 
@@ -30,12 +30,14 @@ class Clock {
         Clock();
         
         void begin();
-        void onButtonPress();
-        void onModButtonPress();
-        void onHomeButtonPress();
+        void onButtonPress();                           // What to do when the encoder button is pressed
+        void onModButtonPress();                        // What to do when the modifier button is pressed
+        void onHomeButtonPress();                       // What to do when the home button is pressed
 
-        String getClockDisplay();
+        String getClockDisplay();                       // Build the display
         void setManualTime(int year, int month, int day, int hour, int minute);
+                                                        // Handle manual time setting
+        bool is24Hour();
 
 };
 

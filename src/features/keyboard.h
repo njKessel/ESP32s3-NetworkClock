@@ -26,10 +26,10 @@ public:
     void onModButton();  
     void onAButton();    
     void onMoveLeft();  
-    void onMoveRight();   
+    void onMoveRight();
     
-    std::string getDisplayString();
-    std::string getEnteredString();
+    std::string getDisplayString();                     // Build the display
+    std::string getEnteredString();                     // Output the result of the keyboard input
 };
 
 #endif
