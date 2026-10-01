@@ -385,11 +385,15 @@ void setup() {
             ///   ///   ///   ///   ///      ///      ///   ///
             ///   ///   ///   ///   ///   /////////   ///   ///
 
+////////////////////////////////////////////////////////////////////////////////
+// MAIN LOOP ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 void loop() {
-  unsigned long now = millis();                                                 // TIMESTAMP START OF LOOP
-  // Per minute report
+  // Core Timing & Diagnostics /////////////////////////////////////////////////
+  unsigned long now = millis();                                               // TIMESTAMP START OF LOOP
+  
   static unsigned long timeSinceLastPMR = 0;
-  if(pmrEnable && (now - timeSinceLastPMR > 60000)){
+  if(pmrEnable && (now - timeSinceLastPMR > 60000)){                          // Trigger Per Minute Report (PMR)
     Serial.println("DBG 000 PMINR | PER MINUTE REPORT");
     Serial.println("DBG 000 PMINR | -----------------");
     Serial.print(  "DBG 000 PMINR | UPTIME: ");           Serial.println(millis());
@@ -398,31 +402,32 @@ void loop() {
     timeSinceLastPMR = now;
   }
 
-
-
+  // State Change Tracking /////////////////////////////////////////////////////
   if (lastState != currentState) {
     Serial.print("DBG 030 STATE: State change to ");
     Serial.println(SystemState(currentState));
   }
   lastState = currentState;
-  uint16_t lightSensorData = analogRead(PIN_LIGHT);
 
-  bool hasMoved = encoderMoved;
+  // Sensor & Encoder Polling //////////////////////////////////////////////////
+  uint16_t lightSensorData = analogRead(PIN_LIGHT);                           // Poll ambient light for auto-brightness
 
+  bool hasMoved = encoderMoved;                                               // Capture volatile encoder state
   if (hasMoved) {
-    encoderMoved = false;
+    encoderMoved = false;                                                     // Reset encoder flag after capture
   }
-  bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                  // DETERMINE STATE OF ENCODER BUTTON
+  
+  bool buttonPressed = (digitalRead(PIN_ENCODER_PUSH) == LOW);                // DETERMINE STATE OF ENCODER BUTTON
 
   if (buttonPressed && (now - encoderDebug_timeLastPressed > 250)) {
     Serial.println("DBG 010 INPUT: Encoder Button Detect");
     encoderDebug_timeLastPressed = now;
   }
 
+  // Panel Button Polling (74HC165) ////////////////////////////////////////////
+  uint8_t currentButtonStates = pullButtonStates();                           // Ingest all 8 bits from the shift register
 
-  uint8_t currentButtonStates = pullButtonStates();
-
-  bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);
+  bool homeButtonPressed = (checkButton(currentButtonStates, 0) == false);    // Active-LOW evaluation for pulled-up buttons
   bool modButtonPressed  = (checkButton(currentButtonStates, 1) == false);
   bool aButtonPressed    = (checkButton(currentButtonStates, 2) == false);
   bool bButtonPressed    = (checkButton(currentButtonStates, 3) == false);
@@ -430,17 +435,51 @@ void loop() {
   bool dButtonPressed    = (checkButton(currentButtonStates, 5) == false);
   bool eButtonPressed    = (checkButton(currentButtonStates, 6) == false);
 
-  WiFiLight = networkTool.isConnected() ? 1 : 0;
+  // Button Debugging //////////////////////////////////////////////////////////
+  static unsigned long panelDebug_timeLastPressed = 0;                        // Isolated debounce timer for debug prints
+  
+  if (now - panelDebug_timeLastPressed > 250) {
+    if (homeButtonPressed) { 
+        Serial.println("DBG 011 INPUT: Home Button Detect"); 
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (modButtonPressed) { 
+        Serial.println("DBG 012 INPUT: Mod Button Detect");  
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (aButtonPressed) { 
+        Serial.println("DBG 013 INPUT: A Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (bButtonPressed) { 
+        Serial.println("DBG 014 INPUT: B Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (cButtonPressed) { 
+        Serial.println("DBG 015 INPUT: C Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (dButtonPressed) { 
+        Serial.println("DBG 016 INPUT: D Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+    else if (eButtonPressed) { 
+        Serial.println("DBG 017 INPUT: E Button Detect");    
+        panelDebug_timeLastPressed = now; 
+    }
+  }
+
+  // Indicator Lights & Background Tasks ///////////////////////////////////////
+  WiFiLight  = networkTool.isConnected() ? 1 : 0;                             // Update LED mux 
   timerLight = timerTool.isAnyTimerRunning() ? 1 : 0;
   alarmLight = alarmTool.isAlarmInNextHour() ? 1 : 0;
 
   static bool timeInitialized = false;
-  if (WiFiLight == 1 && !timeInitialized) {
+  if (WiFiLight == 1 && !timeInitialized) {                                   // NTP sync on first connection
       Serial.println("DBG 095 NETWK: WiFi Connected, starting NTP sync");
       timeUtil.initTime("EST5EDT");
       timeInitialized = true;
   }
-
   // 1. INPUTS
   if (hasMoved) {
     menuTimeout = now; 
